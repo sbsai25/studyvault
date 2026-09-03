@@ -18,6 +18,7 @@ const Navbar = () => {
       <div>
         {user ? (
           <>
+            <Link to="/flashcards" style={{ marginRight: '1rem' }}>📚 My Flashcards</Link>
             <span style={{ marginRight: '1rem' }}>{user.email}</span>
             <button onClick={handleLogout}>Logout</button>
           </>

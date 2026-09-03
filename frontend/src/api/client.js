@@ -92,4 +92,29 @@ export const generateQuiz = async (documentId) => {
   return response.data;
 };
 
+export const getFlashcardSets = async () => {
+  const response = await client.get('/flashcards');
+  return response.data;
+};
+
+export const getFlashcardSet = async (setId) => {
+  const response = await client.get(`/flashcards/${setId}`);
+  return response.data;
+};
+
+export const reviewFlashcard = async (flashcardId, difficulty) => {
+  const response = await client.post(`/flashcards/${flashcardId}/review`, { difficulty });
+  return response.data;
+};
+
+export const getDueFlashcards = async () => {
+  const response = await client.get('/flashcards/due');
+  return response.data;
+};
+
+export const deleteFlashcardSet = async (setId) => {
+  const response = await client.delete(`/flashcards/${setId}`);
+  return response.data;
+};
+
 export default client;

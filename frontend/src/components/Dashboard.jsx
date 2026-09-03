@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { uploadDocument, getDocuments, sendChatMessage, deleteDocument, generateFlashcards, generateQuiz } from '../api/client';
 import ReactMarkdown from 'react-markdown';
 
 function Dashboard() {
+  const navigate = useNavigate();
   const [documents, setDocuments] = useState([]);
   const [file, setFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -14,6 +16,7 @@ function Dashboard() {
 
   const [studyToolResult, setStudyToolResult] = useState(null);
   const [isGeneratingTool, setIsGeneratingTool] = useState(false);
+  const [isGeneratingFlashcards, setIsGeneratingFlashcards] = useState(false);
 
   useEffect(() => {
     fetchDocuments();
@@ -64,16 +67,18 @@ function Dashboard() {
   };
 
   const handleGenerateFlashcards = async (id) => {
-    setIsGeneratingTool(true);
-    setStudyToolResult(null);
+    if (isGeneratingFlashcards) return;
+    setIsGeneratingFlashcards(true);
     try {
       const result = await generateFlashcards(id);
-      setStudyToolResult({ type: 'flashcards', data: result.flashcards });
+      navigate(`/flashcards/${result.flashcard_set_id}/success`, {
+        state: { title: result.title, numberOfCards: result.number_of_cards, documentId: id },
+      });
     } catch (error) {
       console.error(error);
       alert("Failed to generate flashcards.");
     } finally {
-      setIsGeneratingTool(false);
+      setIsGeneratingFlashcards(false);
     }
   };
 
@@ -140,16 +145,16 @@ function Dashboard() {
                 </button>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button 
+                <button
                   onClick={() => handleGenerateFlashcards(doc.id)}
-                  disabled={isGeneratingTool}
+                  disabled={isGeneratingFlashcards || isGeneratingTool}
                   style={{ flex: 1, padding: '0.25rem', fontSize: '0.8rem' }}
                 >
-                  Flashcards
+                  {isGeneratingFlashcards ? 'Generating flashcards...' : 'Flashcards'}
                 </button>
-                <button 
+                <button
                   onClick={() => handleGenerateQuiz(doc.id)}
-                  disabled={isGeneratingTool}
+                  disabled={isGeneratingTool || isGeneratingFlashcards}
                   style={{ flex: 1, padding: '0.25rem', fontSize: '0.8rem' }}
                 >
                   Quiz
@@ -163,19 +168,6 @@ function Dashboard() {
         {/* Study Tool Results */}
         <div style={{ marginTop: '2rem' }}>
           {isGeneratingTool && <p><em>Generating study tools...</em></p>}
-          {studyToolResult && studyToolResult.type === 'flashcards' && (
-            <div>
-              <h3>Flashcards</h3>
-              <ul style={{ listStyle: 'none', padding: 0 }}>
-                {studyToolResult.data.map((fc, i) => (
-                  <li key={i} style={{ marginBottom: '1rem', border: '1px solid #ccc', padding: '0.5rem', borderRadius: '4px' }}>
-                    <strong>Q: {fc.question}</strong>
-                    <p style={{ margin: '0.25rem 0 0 0' }}>A: {fc.answer}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
           {studyToolResult && studyToolResult.type === 'quiz' && (
             <div>
               <h3>Quiz</h3>
