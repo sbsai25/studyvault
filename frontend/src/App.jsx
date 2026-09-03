@@ -1,24 +1,27 @@
-import { useEffect, useState } from "react";
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import Navbar from './components/Navbar';
+import LoginForm from './components/LoginForm';
+import RegisterForm from './components/RegisterForm';
+import ProtectedRoute from './components/ProtectedRoute';
+
+import Dashboard from './components/Dashboard';
 
 function App() {
-  const [message, setMessage] = useState("Connecting to backend...");
-
-  useEffect(() => {
-    fetch("http://127.0.0.1:8000/")
-      .then((response) => response.json())
-      .then((data) => {
-        setMessage(data.message);
-      })
-      .catch(() => {
-        setMessage("Could not connect to backend");
-      });
-  }, []);
-
   return (
-    <div>
-      <h1>StudyVault</h1>
-      <p>{message}</p>
-    </div>
+    <AuthProvider>
+      <Router>
+        <Navbar />
+        <Routes>
+          <Route path="/login" element={<LoginForm />} />
+          <Route path="/register" element={<RegisterForm />} />
+          
+          <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<Dashboard />} />
+          </Route>
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 
