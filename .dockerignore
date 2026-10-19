@@ -1,0 +1,26 @@
+.git
+.gitignore
+.venv
+venv
+.env
+.env.*
+.claude
+__pycache__
+*.py[cod]
+.pytest_cache
+.coverage
+htmlcov
+
+# Runtime data
+.chroma
+uploads
+*.db
+*.sqlite3
+
+# Not needed in the API image
+frontend
+tests
+docs
+logs
+README.md
+docker
