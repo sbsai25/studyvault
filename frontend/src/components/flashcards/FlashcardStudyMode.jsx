@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getFlashcardSet, reviewFlashcard } from '../../api/client';
 import Flashcard from './Flashcard';
@@ -19,32 +19,33 @@ function FlashcardStudyMode() {
   const [flipped, setFlipped] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stats, setStats] = useState(EMPTY_STATS);
-  const [reviewedCount, setReviewedCount] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
 
-  const loadSet = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getFlashcardSet(setId);
-      setFlashcardSet(data);
-    } catch (err) {
-      console.error('Failed to load flashcard set', err);
-      setError('Could not load this flashcard set.');
-    } finally {
-      setLoading(false);
-    }
-  }, [setId]);
-
   useEffect(() => {
-    loadSet();
-  }, [loadSet]);
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await getFlashcardSet(setId);
+        if (!cancelled) setFlashcardSet(data);
+      } catch (err) {
+        console.error('Failed to load flashcard set', err);
+        if (!cancelled) setError('Could not load this flashcard set.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [setId]);
 
   const resetSession = () => {
     setCurrentIndex(0);
     setFlipped(false);
     setStats(EMPTY_STATS);
-    setReviewedCount(0);
     setIsComplete(false);
   };
 
@@ -57,7 +58,6 @@ function FlashcardStudyMode() {
     try {
       await reviewFlashcard(card.id, difficulty);
       setStats((prev) => ({ ...prev, [difficulty]: prev[difficulty] + 1 }));
-      setReviewedCount((c) => c + 1);
 
       setTimeout(() => {
         setIsSubmitting(false);

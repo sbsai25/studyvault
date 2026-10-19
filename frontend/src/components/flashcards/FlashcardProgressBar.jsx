@@ -1,5 +1,3 @@
-import React from 'react';
-
 function FlashcardProgressBar({ current, total }) {
   const percent = total > 0 ? Math.round((current / total) * 100) : 0;
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { uploadDocument, getDocuments, sendChatMessage, deleteDocument, generateFlashcards } from '../api/client';
 import ReactMarkdown from 'react-markdown';
@@ -16,10 +16,6 @@ function Dashboard() {
 
   const [isGeneratingFlashcards, setIsGeneratingFlashcards] = useState(false);
 
-  useEffect(() => {
-    fetchDocuments();
-  }, []);
-
   const fetchDocuments = async () => {
     try {
       const docs = await getDocuments();
@@ -28,6 +24,23 @@ function Dashboard() {
       console.error('Failed to fetch documents', error);
     }
   };
+
+  // Initial load; fetchDocuments() refreshes the list after uploads and deletes
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const docs = await getDocuments();
+        if (!cancelled) setDocuments(docs);
+      } catch (error) {
+        console.error('Failed to fetch documents', error);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {

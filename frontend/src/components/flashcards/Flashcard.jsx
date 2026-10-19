@@ -1,5 +1,3 @@
-import React from 'react';
-
 function Flashcard({ question, answer, flipped, onFlip }) {
   return (
     <div

@@ -1,5 +1,3 @@
-import React from 'react';
-
 const DIFFICULTIES = [
   { key: 'again', label: 'Again', color: '#dc3545' },
   { key: 'hard', label: 'Hard', color: '#fd7e14' },
