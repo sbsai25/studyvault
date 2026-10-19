@@ -97,16 +97,8 @@ def delete_document_chunks_from_vector_store(document_id: int):
     """
     collection.delete(where={"document_id": document_id})
 
-def search_chunks(
-    query: str,
-    user_id: int,
-    top_k: int = 4
-) -> List[dict]:
-    """
-    Searches for the most relevant chunks for a query,
-    scoped to the user.
-    """
-
+def get_query_embedding(query: str) -> List[float]:
+    """Generate an embedding for a search query using Gemini."""
     try:
         result = client.models.embed_content(
             model=EMBEDDING_MODEL,
@@ -115,15 +107,34 @@ def search_chunks(
                 task_type="RETRIEVAL_QUERY"
             ),
         )
+        return result.embeddings[0].values
     except Exception as e:
         raise AIServiceError(f"Query embedding failed: {e}") from e
 
-    query_embedding = result.embeddings[0].values
+
+def search_chunks(
+    query: str,
+    user_id: int,
+    top_k: int = 4,
+    document_id: int | None = None,
+) -> List[dict]:
+    """
+    Searches for the most relevant chunks for a query,
+    scoped to the user and optionally to one of their documents.
+    """
+
+    query_embedding = get_query_embedding(query)
+
+    # Metadata is stored as ints (see documents.py), so filter with ints
+    if document_id is None:
+        where = {"user_id": user_id}
+    else:
+        where = {"$and": [{"user_id": user_id}, {"document_id": document_id}]}
 
     results = collection.query(
         query_embeddings=[query_embedding],
         n_results=top_k,
-        where={"user_id": user_id}
+        where=where
     )
 
     chunks = []
@@ -139,9 +150,20 @@ def search_chunks(
     return chunks
 
 
-def generate_answer(query: str, context_chunks: List[dict]) -> str:
+HISTORY_MESSAGE_CHARS = 2000
+
+
+def generate_answer(
+    query: str,
+    context_chunks: List[dict],
+    history: List[dict] | None = None,
+) -> str:
     """
     Generates an answer using Gemini given the retrieved context.
+
+    `history` is the earlier part of the conversation, oldest first, as
+    [{"role": "user" | "assistant", "content": str}], so follow-up questions
+    ("what about the second one?") can be understood.
     """
 
     context_text = "\n\n---\n\n".join(
@@ -153,15 +175,24 @@ def generate_answer(query: str, context_chunks: List[dict]) -> str:
         ]
     )
 
+    history_block = ""
+    if history:
+        lines = [
+            f"{'User' if m['role'] == 'user' else 'Assistant'}: {m['content'][:HISTORY_MESSAGE_CHARS]}"
+            for m in history
+        ]
+        history_block = "Conversation so far:\n" + "\n".join(lines) + "\n\n"
+
     prompt = f"""You are a helpful AI study assistant.
 
 Use the following retrieved context from the user's study materials
-to answer their question.
+to answer their question. Use the conversation so far only to understand
+what the question refers to; base the answer on the context.
 
 If the context doesn't contain the answer, say:
 "I couldn't find the answer in your uploaded materials."
 
-Context:
+{history_block}Context:
 {context_text}
 
 Question:

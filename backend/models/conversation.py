@@ -1,5 +1,6 @@
 from datetime import datetime
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.types import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.models.base import Base
@@ -40,6 +41,8 @@ class Message(Base):
     )
     role: Mapped[str] = mapped_column(String(50), nullable=False) # 'user' or 'assistant'
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    # Sources cited by an assistant answer (list of dicts); None for user messages
+    sources: Mapped[list | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,

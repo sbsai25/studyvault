@@ -10,9 +10,17 @@ import time
 
 client = TestClient(app)
 
+MOCK_CHUNK = {
+    "id": "999999",
+    "text": "Some retrieved study material.",
+    "metadata": {"user_id": 0, "document_id": 999999, "chunk_index": 0},
+}
+
 # Helper for auth
 def setup_test_users():
     db = next(get_db())
+    # The returned users outlive this session; don't expire them on commit
+    db.expire_on_commit = False
     
     # User A
     user_a = db.query(User).filter(User.email == "test_a_chat@example.com").first()
@@ -57,7 +65,7 @@ def auth_client_b():
 @patch("backend.routers.chat.generate_answer")
 @patch("backend.routers.chat.generate_conversation_title")
 def test_create_conversation_and_title(mock_title, mock_answer, mock_search, auth_client_a):
-    mock_search.return_value = []
+    mock_search.return_value = [MOCK_CHUNK]
     mock_answer.return_value = "This is a mock answer."
     mock_title.return_value = "Mock Title"
 
@@ -188,3 +196,179 @@ def test_delete_conversation(auth_client_a):
     db = next(get_db())
     messages = db.query(Message).filter(Message.conversation_id == conv_id).all()
     assert len(messages) == 0
+
+
+# --- History, document scoping, sources ------------------------------------
+
+from backend.models.document import Document
+from backend.routers.chat import NO_CONTEXT_ANSWER
+from backend.services.rag import AIServiceError
+
+
+def _document_for(user, filename):
+    db = next(get_db())
+    db.expire_on_commit = False
+    doc = db.query(Document).filter(Document.user_id == user.id, Document.filename == filename).first()
+    if not doc:
+        doc = Document(user_id=user.id, filename=filename, file_type="txt", upload_path="unused")
+        db.add(doc)
+        db.commit()
+    return doc
+
+
+def _chunk(doc, chunk_id, text, index=0):
+    return {
+        "id": str(chunk_id),
+        "text": text,
+        "metadata": {"user_id": doc.user_id, "document_id": doc.id, "chunk_index": index},
+    }
+
+
+def _conversation_count(user):
+    db = next(get_db())
+    return db.query(Conversation).filter(Conversation.user_id == user.id).count()
+
+
+@patch("backend.routers.chat.generate_conversation_title", return_value="Title")
+@patch("backend.routers.chat.generate_answer")
+@patch("backend.routers.chat.search_chunks", return_value=[MOCK_CHUNK])
+def test_history_reaches_generate_answer_in_order(mock_search, mock_answer, _title, auth_client_a):
+    mock_answer.side_effect = ["Answer 1", "Answer 2", "Answer 3"]
+
+    conv_id = auth_client_a.post("/chat/", json={"query": "Question 1"}).json()["conversation_id"]
+    auth_client_a.post("/chat/", json={"query": "Question 2", "conversation_id": conv_id})
+    auth_client_a.post("/chat/", json={"query": "What about that?", "conversation_id": conv_id})
+
+    first_history = mock_answer.call_args_list[0].args[2]
+    assert first_history == []  # new conversation has no history
+
+    query, _, history = mock_answer.call_args_list[2].args
+    assert query == "What about that?"
+    assert history == [
+        {"role": "user", "content": "Question 1"},
+        {"role": "assistant", "content": "Answer 1"},
+        {"role": "user", "content": "Question 2"},
+        {"role": "assistant", "content": "Answer 2"},
+    ]
+    # The follow-up is searched together with the previous question
+    assert mock_search.call_args.args[0] == "Question 2\nWhat about that?"
+
+
+@patch("backend.routers.chat.generate_conversation_title", return_value="Title")
+@patch("backend.routers.chat.generate_answer", return_value="Answer")
+@patch("backend.routers.chat.search_chunks", return_value=[MOCK_CHUNK])
+def test_history_is_limited_to_last_six_messages(_search, mock_answer, _title, auth_client_a):
+    conv_id = auth_client_a.post("/chat/", json={"query": "Q1"}).json()["conversation_id"]
+    for q in ("Q2", "Q3", "Q4", "Q5"):
+        auth_client_a.post("/chat/", json={"query": q, "conversation_id": conv_id})
+
+    history = mock_answer.call_args.args[2]
+    assert len(history) == 6
+    assert history[0] == {"role": "user", "content": "Q2"}
+    assert history[-1] == {"role": "assistant", "content": "Answer"}
+
+
+@patch("backend.routers.chat.generate_conversation_title", return_value="Title")
+@patch("backend.routers.chat.generate_answer", return_value="Scoped answer")
+@patch("backend.routers.chat.search_chunks", return_value=[MOCK_CHUNK])
+def test_document_id_scopes_retrieval(mock_search, _answer, _title, auth_client_a):
+    user_a, _ = setup_test_users()
+    doc = _document_for(user_a, "scoped_notes.txt")
+
+    res = auth_client_a.post("/chat/", json={"query": "Explain it", "document_id": doc.id})
+
+    assert res.status_code == 200
+    assert mock_search.call_args.kwargs["document_id"] == doc.id
+    assert mock_search.call_args.kwargs["user_id"] == user_a.id
+
+    # Scope is per request: a follow-up without document_id searches everything
+    auth_client_a.post("/chat/", json={"query": "And more?", "conversation_id": res.json()["conversation_id"]})
+    assert mock_search.call_args.kwargs["document_id"] is None
+
+
+@patch("backend.routers.chat.generate_conversation_title", return_value="Title")
+@patch("backend.routers.chat.generate_answer", return_value="Answer")
+@patch("backend.routers.chat.search_chunks", return_value=[MOCK_CHUNK])
+def test_other_users_document_returns_404_and_saves_nothing(mock_search, mock_answer, _title, auth_client_a):
+    user_a, user_b = setup_test_users()
+    doc_b = _document_for(user_b, "private_b.txt")
+    before = _conversation_count(user_a)
+
+    res = auth_client_a.post("/chat/", json={"query": "Peek", "document_id": doc_b.id})
+
+    assert res.status_code == 404
+    mock_search.assert_not_called()
+    mock_answer.assert_not_called()
+    assert _conversation_count(user_a) == before
+
+
+@patch("backend.routers.chat.generate_conversation_title", return_value="Title")
+@patch("backend.routers.chat.generate_answer", return_value="Answer")
+@patch("backend.routers.chat.search_chunks", return_value=[MOCK_CHUNK])
+def test_own_document_with_other_users_conversation_returns_404(mock_search, _answer, _title, auth_client_a, auth_client_b):
+    user_a, _ = setup_test_users()
+    doc_a = _document_for(user_a, "scoped_notes.txt")
+    conv_b = auth_client_b.post("/chat/", json={"query": "B's chat"}).json()["conversation_id"]
+    mock_search.reset_mock()
+
+    app.dependency_overrides[get_current_user] = override_get_current_user_a
+    res = client.post("/chat/", json={"query": "Hijack", "conversation_id": conv_b, "document_id": doc_a.id})
+
+    assert res.status_code == 404
+    mock_search.assert_not_called()
+
+
+@patch("backend.routers.chat.generate_conversation_title", return_value="Title")
+@patch("backend.routers.chat.generate_answer", return_value="Grounded answer")
+@patch("backend.routers.chat.search_chunks")
+def test_sources_include_filename_snippet_and_are_persisted(mock_search, _answer, _title, auth_client_a):
+    user_a, _ = setup_test_users()
+    doc = _document_for(user_a, "biology_notes.txt")
+    long_text = "Mitochondria   produce ATP.\n" + "x" * 300
+    chunk1 = _chunk(doc, 5001, long_text, index=3)
+    chunk2 = _chunk(doc, 5002, "Ribosomes build proteins.", index=7)
+    mock_search.return_value = [chunk1, chunk2, chunk1]  # duplicate is dropped
+
+    res = auth_client_a.post("/chat/", json={"query": "What makes ATP?"})
+    assert res.status_code == 200
+    sources = res.json()["sources"]
+
+    assert [s["chunk_id"] for s in sources] == ["5001", "5002"]
+    first = sources[0]
+    assert first["document_id"] == doc.id  # old keys kept for the Dashboard
+    assert first["filename"] == "biology_notes.txt"
+    assert first["chunk_index"] == 3
+    assert first["snippet"].startswith("Mitochondria produce ATP.")  # whitespace collapsed
+    assert len(first["snippet"]) <= 201 and first["snippet"].endswith("…")
+    assert sources[1]["snippet"] == "Ribosomes build proteins."
+
+    conv = auth_client_a.get(f"/chat/conversations/{res.json()['conversation_id']}").json()
+    user_msg, assistant_msg = conv["messages"]
+    assert user_msg["sources"] is None
+    assert assistant_msg["sources"] == sources
+
+
+@patch("backend.routers.chat.generate_conversation_title", return_value="Title")
+@patch("backend.routers.chat.generate_answer")
+@patch("backend.routers.chat.search_chunks", return_value=[])
+def test_no_retrieved_chunks_skips_gemini(_search, mock_answer, _title, auth_client_a):
+    res = auth_client_a.post("/chat/", json={"query": "Something not in my notes"})
+
+    assert res.status_code == 200
+    assert res.json()["answer"] == NO_CONTEXT_ANSWER
+    assert res.json()["sources"] == []
+    mock_answer.assert_not_called()
+
+
+@patch("backend.routers.chat.generate_conversation_title", return_value="Title")
+@patch("backend.routers.chat.generate_answer", side_effect=AIServiceError("provider down"))
+@patch("backend.routers.chat.search_chunks", return_value=[MOCK_CHUNK])
+def test_ai_failure_returns_502_and_saves_nothing(_search, _answer, _title, auth_client_a):
+    user_a, _ = setup_test_users()
+    before = _conversation_count(user_a)
+
+    res = auth_client_a.post("/chat/", json={"query": "Hello?"})
+
+    assert res.status_code == 502
+    assert "provider" not in res.text
+    assert _conversation_count(user_a) == before
