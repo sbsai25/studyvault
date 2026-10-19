@@ -51,6 +51,16 @@ def _fresh_schema():
 
 
 @pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    # Every TestClient request comes from the same "client" address, so start
+    # each test with empty rate-limit windows.
+    from backend.rate_limit import reset_rate_limits
+
+    reset_rate_limits()
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _release_leaked_connections():
     # Tests use `db = next(get_db())`, which closes the session immediately;
     # later queries on it check out a connection that is only returned to the

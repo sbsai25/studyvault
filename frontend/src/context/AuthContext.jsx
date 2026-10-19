@@ -46,7 +46,8 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await client.post('/auth/logout');
+      // Send the refresh token so the server revokes it
+      await client.post('/auth/logout', { refresh_token: localStorage.getItem('refresh_token') });
     } catch {
       // ignore error on logout
     }

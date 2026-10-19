@@ -1,8 +1,32 @@
 import axios from 'axios';
 
+const API_BASE_URL = 'http://127.0.0.1:8000';
+
 const client = axios.create({
-  baseURL: 'http://127.0.0.1:8000',
+  baseURL: API_BASE_URL,
 });
+
+// Refresh tokens are single-use (the server rotates them and treats reuse as
+// theft), so when several requests get a 401 at once they must share one
+// refresh call instead of each sending the same token.
+let refreshPromise = null;
+
+const refreshTokens = (refreshToken) => {
+  if (!refreshPromise) {
+    refreshPromise = axios
+      .post(`${API_BASE_URL}/auth/refresh`, { refresh_token: refreshToken })
+      .then((res) => {
+        const { access_token, refresh_token: new_refresh } = res.data;
+        localStorage.setItem('access_token', access_token);
+        localStorage.setItem('refresh_token', new_refresh);
+        return access_token;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+};
 
 client.interceptors.request.use(
   (config) => {
@@ -26,11 +50,7 @@ client.interceptors.response.use(
 
       if (refreshToken) {
         try {
-          const res = await axios.post(`http://127.0.0.1:8000/auth/refresh?refresh_token=${refreshToken}`);
-          const { access_token, refresh_token: new_refresh } = res.data;
-
-          localStorage.setItem('access_token', access_token);
-          localStorage.setItem('refresh_token', new_refresh);
+          const access_token = await refreshTokens(refreshToken);
 
           originalRequest.headers.Authorization = `Bearer ${access_token}`;
           return client(originalRequest);
@@ -73,12 +93,36 @@ export const deleteDocument = async (id) => {
 };
 
 
-export const sendChatMessage = async (query, conversationId = null) => {
+export const sendChatMessage = async (query, conversationId = null, documentId = null) => {
   const payload = { query };
   if (conversationId) {
     payload.conversation_id = conversationId;
   }
+  if (documentId) {
+    // Search only this document for this one message
+    payload.document_id = documentId;
+  }
   const response = await client.post('/chat/', payload);
+  return response.data;
+};
+
+export const getConversations = async () => {
+  const response = await client.get('/chat/conversations');
+  return response.data;
+};
+
+export const getConversation = async (conversationId) => {
+  const response = await client.get(`/chat/conversations/${conversationId}`);
+  return response.data;
+};
+
+export const renameConversation = async (conversationId, title) => {
+  const response = await client.patch(`/chat/conversations/${conversationId}`, { title });
+  return response.data;
+};
+
+export const deleteConversation = async (conversationId) => {
+  const response = await client.delete(`/chat/conversations/${conversationId}`);
   return response.data;
 };
 
@@ -87,8 +131,85 @@ export const generateFlashcards = async (documentId) => {
   return response.data;
 };
 
-export const generateQuiz = async (documentId) => {
-  const response = await client.post('/tools/quiz', { document_id: documentId });
+export const generateQuiz = async (documentId, numQuestions = null) => {
+  const payload = { document_id: documentId };
+  if (numQuestions) {
+    payload.num_questions = numQuestions; // 3-20, default 5
+  }
+  const response = await client.post('/tools/quiz', payload);
+  return response.data;
+};
+
+export const getQuizzes = async () => {
+  const response = await client.get('/quizzes');
+  return response.data;
+};
+
+// Questions and options only; answers come back after submitting
+export const getQuiz = async (quizId) => {
+  const response = await client.get(`/quizzes/${quizId}`);
+  return response.data;
+};
+
+// answers: [{ question_id, selected_answer }]; unanswered questions count as wrong
+export const submitQuiz = async (quizId, answers) => {
+  const response = await client.post(`/quizzes/${quizId}/submit`, { answers });
+  return response.data;
+};
+
+export const getQuizAttempts = async (quizId) => {
+  const response = await client.get(`/quizzes/${quizId}/attempts`);
+  return response.data;
+};
+
+export const getQuizAttempt = async (attemptId) => {
+  const response = await client.get(`/quizzes/attempts/${attemptId}`);
+  return response.data;
+};
+
+export const deleteQuiz = async (quizId) => {
+  const response = await client.delete(`/quizzes/${quizId}`);
+  return response.data;
+};
+
+export const generateFillBlanks = async (documentId, numQuestions = null) => {
+  const payload = { document_id: documentId };
+  if (numQuestions) {
+    payload.num_questions = numQuestions; // 3-20, default 10
+  }
+  const response = await client.post('/tools/fill-blanks', payload);
+  return response.data;
+};
+
+export const getFillBlankSets = async () => {
+  const response = await client.get('/fill-blanks');
+  return response.data;
+};
+
+// Sentences and hints only; answers come back after submitting
+export const getFillBlankSet = async (setId) => {
+  const response = await client.get(`/fill-blanks/${setId}`);
+  return response.data;
+};
+
+// answers: [{ question_id, answer }]
+export const submitFillBlanks = async (setId, answers) => {
+  const response = await client.post(`/fill-blanks/${setId}/submit`, { answers });
+  return response.data;
+};
+
+export const getFillBlankAttempts = async (setId) => {
+  const response = await client.get(`/fill-blanks/${setId}/attempts`);
+  return response.data;
+};
+
+export const getFillBlankAttempt = async (attemptId) => {
+  const response = await client.get(`/fill-blanks/attempts/${attemptId}`);
+  return response.data;
+};
+
+export const deleteFillBlankSet = async (setId) => {
+  const response = await client.delete(`/fill-blanks/${setId}`);
   return response.data;
 };
 
@@ -114,6 +235,28 @@ export const getDueFlashcards = async () => {
 
 export const deleteFlashcardSet = async (setId) => {
   const response = await client.delete(`/flashcards/${setId}`);
+  return response.data;
+};
+
+// Cards in one deck to study now: never reviewed, or due for review
+export const getDeckDueFlashcards = async (setId) => {
+  const response = await client.get(`/flashcards/${setId}/due`);
+  return response.data;
+};
+
+export const getActivity = async (limit = 20, offset = 0) => {
+  const response = await client.get('/activity', { params: { limit, offset } });
+  return response.data;
+};
+
+export const getStats = async () => {
+  const response = await client.get('/stats');
+  return response.data;
+};
+
+// Revokes the refresh token on the server; always succeeds
+export const logout = async (refreshToken) => {
+  const response = await client.post('/auth/logout', refreshToken ? { refresh_token: refreshToken } : undefined);
   return response.data;
 };
 

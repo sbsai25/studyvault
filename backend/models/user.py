@@ -31,6 +31,7 @@ class User(Base):
     quiz_attempts = relationship("QuizAttempt", cascade="all, delete-orphan")
     fill_blank_sets = relationship("FillBlankSet", cascade="all, delete-orphan")
     fill_blank_attempts = relationship("FillBlankAttempt", cascade="all, delete-orphan")
+    refresh_tokens = relationship("RefreshToken", cascade="all, delete-orphan")
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,

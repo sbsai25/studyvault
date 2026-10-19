@@ -8,6 +8,7 @@ from .flashcard import FlashcardSet, Flashcard, FlashcardProgress
 from .quiz import Quiz, QuizQuestion, QuizAttempt, QuizAnswer
 from .fill_blank import FillBlankSet, FillBlankQuestion, FillBlankAttempt
 from .activity import Activity
+from .refresh_token import RefreshToken
 
 __all__ = [
     "Base",
@@ -27,4 +28,5 @@ __all__ = [
     "FillBlankQuestion",
     "FillBlankAttempt",
     "Activity",
+    "RefreshToken",
 ]

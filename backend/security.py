@@ -35,10 +35,11 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def create_refresh_token(data: dict) -> str:
+def create_refresh_token(data: dict, jti: str) -> str:
+    """Creates a refresh JWT. `jti` must match a stored RefreshToken row."""
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire, "type": "refresh"})
+    to_encode.update({"exp": expire, "type": "refresh", "jti": jti})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
