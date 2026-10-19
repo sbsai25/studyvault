@@ -1,9 +1,10 @@
+import logging
 import os
 import re
 import uuid
-from typing import List
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -13,14 +14,92 @@ from backend.deps import get_current_user
 from backend.models.user import User
 from backend.models.document import Document
 from backend.models.chunk import Chunk
-from backend.services.rag import add_chunks_to_vector_store, delete_document_chunks_from_vector_store
+from backend.services.rag import (
+    AIServiceError,
+    add_chunks_to_vector_store,
+    delete_document_chunks_from_vector_store,
+)
 
 router = APIRouter(prefix="/documents", tags=["documents"])
+
+logger = logging.getLogger(__name__)
 
 UPLOAD_DIR = os.getenv("UPLOAD_DIR") or os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads"
 )
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+ALLOWED_FILE_TYPES = {"pdf", "txt", "md", "docx", "pptx"}
+MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "20"))
+READ_CHUNK_BYTES = 1024 * 1024
+
+
+class UnreadableDocumentError(Exception):
+    """The file could not be parsed or contained no usable text."""
+
+
+def _extract_text(file_path: str, file_type: str) -> str:
+    try:
+        if file_type == "pdf":
+            reader = PdfReader(file_path)
+            return "\n".join((page.extract_text() or "") for page in reader.pages)
+        if file_type in ("txt", "md"):
+            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+                return f.read()
+        if file_type == "docx":
+            import docx
+            doc = docx.Document(file_path)
+            return "\n".join(para.text for para in doc.paragraphs)
+        if file_type == "pptx":
+            import pptx
+            presentation = pptx.Presentation(file_path)
+            return "\n".join(
+                shape.text
+                for slide in presentation.slides
+                for shape in slide.shapes
+                if hasattr(shape, "text")
+            )
+    except Exception as e:
+        raise UnreadableDocumentError(f"Could not parse {file_type} file: {e}") from e
+    raise UnreadableDocumentError(f"Unsupported file type: {file_type}")
+
+
+def _remove_file(file_path: str):
+    try:
+        os.remove(file_path)
+    except FileNotFoundError:
+        pass
+    except OSError:
+        logger.exception("Could not remove file %s", file_path)
+
+
+def _cleanup_failed_upload(db: Session, document_id: int | None, file_path: str):
+    """Best-effort removal of everything a failed upload may have created.
+
+    Each step is guarded on its own so a cleanup failure is logged but never
+    replaces the original error.
+    """
+    try:
+        db.rollback()
+    except Exception:
+        logger.exception("Rollback failed while cleaning up upload")
+
+    if document_id is not None:
+        try:
+            delete_document_chunks_from_vector_store(document_id)
+        except Exception:
+            logger.exception("Could not remove vectors for document %s", document_id)
+        try:
+            doc = db.query(Document).filter(Document.id == document_id).first()
+            if doc:
+                db.delete(doc)
+                db.commit()
+        except Exception:
+            db.rollback()
+            logger.exception("Could not remove document row %s", document_id)
+
+    _remove_file(file_path)
+
 
 @router.post("/upload")
 async def upload_document(
@@ -33,119 +112,141 @@ async def upload_document(
     file_ext = os.path.splitext(original_name)[1].lower()
     if not re.fullmatch(r"\.[a-z0-9]{1,10}", file_ext):
         file_ext = ""
-    file_type = file_ext[1:] if file_ext else "unknown"
+    file_type = file_ext[1:]
+
+    if file_type not in ALLOWED_FILE_TYPES:
+        raise HTTPException(
+            status_code=415,
+            detail=f"Unsupported file type. Allowed: {', '.join(sorted(ALLOWED_FILE_TYPES))}",
+        )
 
     # Save under a unique generated name so uploads can't escape UPLOAD_DIR
-    # or overwrite another user's file with the same name
+    # or overwrite another user's file with the same name. Stream it to disk
+    # and stop as soon as it passes the size limit.
     file_path = os.path.join(UPLOAD_DIR, f"{uuid.uuid4().hex}{file_ext}")
-    with open(file_path, "wb") as f:
-        f.write(await file.read())
+    max_bytes = MAX_UPLOAD_MB * 1024 * 1024
+    size = 0
+    too_large = False
+    try:
+        with open(file_path, "wb") as f:
+            while piece := await file.read(READ_CHUNK_BYTES):
+                size += len(piece)
+                if size > max_bytes:
+                    too_large = True
+                    break
+                f.write(piece)
+    except Exception:
+        _remove_file(file_path)
+        raise
+    if too_large:
+        _remove_file(file_path)
+        raise HTTPException(status_code=413, detail=f"File is larger than {MAX_UPLOAD_MB} MB")
 
-    # Create document record
-    db_doc = Document(
-        user_id=user.id,
-        filename=original_name,
-        file_type=file_type,
-        upload_path=file_path
-    )
-    db.add(db_doc)
-    db.commit()
-    db.refresh(db_doc)
-    
-    # Extract text
-    text = ""
-    if file_type == "pdf":
-        reader = PdfReader(file_path)
-        for page in reader.pages:
-            text += page.extract_text() + "\n"
-    elif file_type == "txt":
-        with open(file_path, "r", encoding="utf-8") as f:
-            text = f.read()
-    elif file_type == "docx":
-        import docx
-        doc = docx.Document(file_path)
-        text = "\n".join([para.text for para in doc.paragraphs])
-    elif file_type == "pptx":
-        import pptx
-        presentation = pptx.Presentation(file_path)
-        for slide in presentation.slides:
-            for shape in slide.shapes:
-                if hasattr(shape, "text"):
-                    text += shape.text + "\n"
-    else:
-        # Ignore other types for now, or just try to read as text
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                text = f.read()
-        except:
-            raise HTTPException(status_code=400, detail="Unsupported file format")
-            
-    # Chunk text
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200,
-    )
-    texts = text_splitter.split_text(text)
-    
-    if not texts:
-        return {"message": "Document uploaded but no text extracted", "document_id": db_doc.id}
-    
-    # Save chunks to DB
-    db_chunks = []
-    for idx, chunk_text in enumerate(texts):
-        c = Chunk(
-            document_id=db_doc.id,
+    document_id = None
+    try:
+        # Create document record
+        db_doc = Document(
             user_id=user.id,
-            content=chunk_text,
-            chunk_index=idx
+            filename=original_name,
+            file_type=file_type,
+            upload_path=file_path
         )
-        db_chunks.append(c)
-        
-    db.add_all(db_chunks)
-    db.commit()
-    
-    # Generate embeddings and add to vector store
-    # We need to refresh db_chunks to get their IDs
-    for c in db_chunks:
-        db.refresh(c)
-        
-    vector_chunks = []
-    for c in db_chunks:
-        vector_chunks.append({
-            "id": str(c.id),
-            "text": c.content,
-            "metadata": {
-                "user_id": user.id,
-                "document_id": db_doc.id,
-                "chunk_index": c.chunk_index
-            }
-        })
-        
-    add_chunks_to_vector_store(vector_chunks)
-    
+        db.add(db_doc)
+        db.commit()
+        db.refresh(db_doc)
+        document_id = db_doc.id
+
+        # Extract and chunk text
+        text = _extract_text(file_path, file_type)
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,
+            chunk_overlap=200,
+        )
+        texts = [t for t in text_splitter.split_text(text) if t.strip()]
+        if not texts:
+            raise UnreadableDocumentError("No text could be extracted")
+
+        # Save chunks to DB
+        db_chunks = [
+            Chunk(
+                document_id=db_doc.id,
+                user_id=user.id,
+                content=chunk_text,
+                chunk_index=idx
+            )
+            for idx, chunk_text in enumerate(texts)
+        ]
+        db.add_all(db_chunks)
+        db.commit()
+
+        # Generate embeddings and add to vector store
+        vector_chunks = []
+        for c in db_chunks:
+            db.refresh(c)
+            vector_chunks.append({
+                "id": str(c.id),
+                "text": c.content,
+                "metadata": {
+                    "user_id": user.id,
+                    "document_id": db_doc.id,
+                    "chunk_index": c.chunk_index
+                }
+            })
+        add_chunks_to_vector_store(vector_chunks)
+
+    except UnreadableDocumentError as e:
+        logger.info("Rejected upload %r: %s", original_name, e)
+        _cleanup_failed_upload(db, document_id, file_path)
+        raise HTTPException(status_code=422, detail="No readable text could be extracted from this file")
+    except AIServiceError:
+        _cleanup_failed_upload(db, document_id, file_path)
+        raise  # turned into a generic 502 by the app's exception handler
+    except Exception:
+        logger.exception("Unexpected error while processing upload %r", original_name)
+        _cleanup_failed_upload(db, document_id, file_path)
+        raise HTTPException(status_code=500, detail="Failed to process the uploaded document")
+
     return {"message": "Document uploaded and processed successfully", "document_id": db_doc.id, "chunks_count": len(vector_chunks)}
 
 @router.get("/")
 def get_documents(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    docs = db.query(Document).filter(Document.user_id == user.id).all()
-    return [{"id": d.id, "filename": d.filename, "created_at": d.created_at} for d in docs]
+    docs = (
+        db.query(Document)
+        .filter(Document.user_id == user.id)
+        .order_by(Document.created_at.desc(), Document.id.desc())
+        .all()
+    )
+    chunk_counts = dict(
+        db.query(Chunk.document_id, func.count(Chunk.id))
+        .filter(Chunk.user_id == user.id)
+        .group_by(Chunk.document_id)
+        .all()
+    )
+    return [
+        {
+            "id": d.id,
+            "filename": d.filename,
+            "file_type": d.file_type,
+            "chunk_count": chunk_counts.get(d.id, 0),
+            "created_at": d.created_at,
+        }
+        for d in docs
+    ]
 
 @router.delete("/{document_id}")
 def delete_document(document_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     doc = db.query(Document).filter(Document.id == document_id, Document.user_id == user.id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    
+
     # Delete from ChromaDB
     delete_document_chunks_from_vector_store(document_id)
-    
+
     # Remove file from disk
-    if os.path.exists(doc.upload_path):
-        os.remove(doc.upload_path)
-        
-    # Delete from SQLite database (cascade will handle chunks)
+    _remove_file(doc.upload_path)
+
+    # Delete from the database (cascade handles chunks, flashcard sets and quizzes)
     db.delete(doc)
     db.commit()
-    
-    return {"message": "Document deleted successfully"}
 
+    return {"message": "Document deleted successfully"}

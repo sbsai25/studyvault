@@ -126,6 +126,23 @@ def test_generate_flashcards_creates_set_and_cards():
     assert {c.question for c in cards} == {c["question"] for c in MOCK_CARDS}
 
 
+def test_generate_flashcards_ai_failure_returns_502_and_saves_nothing():
+    user_a, _, doc_a = setup_test_users_and_docs()
+    db = next(get_db())
+    sets_before = db.query(FlashcardSet).filter(FlashcardSet.user_id == user_a.id).count()
+
+    with patch(
+        "backend.services.rag.client.models.generate_content",
+        side_effect=RuntimeError("provider said: invalid key AIza-secret"),
+    ):
+        res = as_user_a().post("/tools/flashcards", json={"document_id": doc_a.id})
+
+    assert res.status_code == 502
+    assert "AIza" not in res.text
+    db = next(get_db())
+    assert db.query(FlashcardSet).filter(FlashcardSet.user_id == user_a.id).count() == sets_before
+
+
 def test_generate_flashcards_document_not_owned():
     _, _, doc_a = setup_test_users_and_docs()
     with patch("backend.routers.study_tools.generate_flashcards", return_value=MOCK_CARDS):

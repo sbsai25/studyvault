@@ -88,3 +88,140 @@ def test_upload_filename_cannot_escape_upload_dir(mock_get_embedding):
     assert os.path.basename(stored_path) != "evil.txt"
 
     client.delete(f"/documents/{doc_id}", headers=headers)
+
+
+# --- Upload validation and failure cleanup ---------------------------------
+
+from backend.database import SessionLocal
+from backend.models.chunk import Chunk
+from backend.models.document import Document
+from backend.routers.documents import UPLOAD_DIR
+from backend.services.rag import AIServiceError
+
+GENERIC_AI_ERROR = "The AI service failed to process this request. Please try again."
+
+
+def _auth():
+    token = setup_test_user()
+    headers = {"Authorization": f"Bearer {token}"}
+    user_id = client.get("/auth/me", headers=headers).json()["id"]
+    return headers, user_id
+
+
+def _upload(headers, name, content, content_type="text/plain"):
+    return client.post(
+        "/documents/upload",
+        files={"file": (name, content, content_type)},
+        headers=headers,
+    )
+
+
+def _uploaded_files():
+    return set(os.listdir(UPLOAD_DIR))
+
+
+def _rows_for(user_id):
+    db = SessionLocal()
+    try:
+        docs = db.query(Document).filter(Document.user_id == user_id).count()
+        chunks = db.query(Chunk).filter(Chunk.user_id == user_id).count()
+        return docs, chunks
+    finally:
+        db.close()
+
+
+def test_upload_rejects_unsupported_type():
+    headers, user_id = _auth()
+    before = _uploaded_files()
+
+    res = _upload(headers, "malware.exe", b"MZ...", "application/octet-stream")
+
+    assert res.status_code == 415
+    assert _uploaded_files() == before
+    assert _rows_for(user_id) == (0, 0)
+
+
+def test_upload_rejects_file_over_size_limit():
+    headers, user_id = _auth()
+    before = _uploaded_files()
+
+    # 1 MB limit; send 1.5 MB so the limit is crossed partway through a read
+    with patch("backend.routers.documents.MAX_UPLOAD_MB", 1):
+        res = _upload(headers, "big.txt", b"a" * (1024 * 1024 + 512 * 1024))
+
+    assert res.status_code == 413
+    assert _uploaded_files() == before  # no partial file left behind
+    assert _rows_for(user_id) == (0, 0)
+
+
+def test_upload_with_no_text_is_rejected_and_cleaned_up():
+    headers, user_id = _auth()
+    before = _uploaded_files()
+
+    res = _upload(headers, "blank.txt", b"   \n\n  ")
+
+    assert res.status_code == 422
+    assert _uploaded_files() == before
+    assert _rows_for(user_id) == (0, 0)
+
+
+def test_upload_corrupt_pdf_is_rejected_and_cleaned_up():
+    headers, user_id = _auth()
+    before = _uploaded_files()
+
+    res = _upload(headers, "broken.pdf", b"this is not a pdf", "application/pdf")
+
+    assert res.status_code == 422
+    assert _uploaded_files() == before
+    assert _rows_for(user_id) == (0, 0)
+
+
+@patch("backend.services.rag.get_embedding")
+def test_upload_embedding_failure_returns_502_and_cleans_up(mock_get_embedding):
+    mock_get_embedding.side_effect = AIServiceError("quota exceeded for key AIza-secret")
+    headers, user_id = _auth()
+    before = _uploaded_files()
+
+    res = _upload(headers, "notes.txt", b"Photosynthesis converts light into chemical energy.")
+
+    assert res.status_code == 502
+    assert res.json()["detail"] == GENERIC_AI_ERROR  # provider text never reaches the client
+    assert _uploaded_files() == before
+    assert _rows_for(user_id) == (0, 0)
+
+
+@patch("backend.routers.documents.delete_document_chunks_from_vector_store")
+@patch("backend.routers.documents.add_chunks_to_vector_store")
+def test_upload_unexpected_error_still_cleans_up(mock_add, mock_delete_vectors):
+    mock_add.side_effect = RuntimeError("chroma exploded")
+    # Even if one cleanup step fails, the others still run and the original error wins
+    mock_delete_vectors.side_effect = RuntimeError("chroma still exploded")
+    headers, user_id = _auth()
+    before = _uploaded_files()
+
+    res = _upload(headers, "notes.md", b"# Cells\nThe mitochondria is the powerhouse of the cell.")
+
+    assert res.status_code == 500
+    assert "chroma" not in res.json()["detail"]
+    assert _uploaded_files() == before
+    assert _rows_for(user_id) == (0, 0)
+
+
+@patch("backend.services.rag.get_embedding")
+def test_document_list_includes_type_and_chunk_count(mock_get_embedding):
+    mock_get_embedding.return_value = [0.1] * 3072
+    headers, _ = _auth()
+
+    first = _upload(headers, "first.txt", b"Short note one.").json()["document_id"]
+    second = _upload(headers, "second.md", ("word " * 400).encode()).json()["document_id"]
+
+    docs = client.get("/documents/", headers=headers).json()
+    assert [d["id"] for d in docs] == [second, first]  # newest first
+    by_id = {d["id"]: d for d in docs}
+    assert by_id[first]["file_type"] == "txt"
+    assert by_id[first]["chunk_count"] == 1
+    assert by_id[second]["file_type"] == "md"
+    assert by_id[second]["chunk_count"] >= 2
+
+    for doc_id in (first, second):
+        client.delete(f"/documents/{doc_id}", headers=headers)

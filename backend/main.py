@@ -1,10 +1,13 @@
+import logging
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 import backend.database  # loads .env before the routers read their settings
 import backend.models
+from backend.services.rag import AIServiceError
 from backend.routers.auth import router as auth_router
 from backend.routers.documents import router as documents_router
 from backend.routers.chat import router as chat_router
@@ -12,6 +15,18 @@ from backend.routers.study_tools import router as tools_router
 from backend.routers.flashcards import router as flashcards_router
 
 app = FastAPI(title="StudyVault API")
+
+logger = logging.getLogger("studyvault")
+
+
+@app.exception_handler(AIServiceError)
+async def ai_service_error_handler(request: Request, exc: AIServiceError):
+    # Log the provider error for debugging, but never send it to the client
+    logger.error("AI service error on %s %s: %s", request.method, request.url.path, exc)
+    return JSONResponse(
+        status_code=502,
+        content={"detail": "The AI service failed to process this request. Please try again."},
+    )
 
 # CORS — comma-separated origins, defaults to the Vite dev server
 CORS_ORIGINS = [
