@@ -14,6 +14,8 @@ from backend.deps import get_current_user
 from backend.models.user import User
 from backend.models.document import Document
 from backend.models.chunk import Chunk
+from backend.services import activity
+from backend.services.activity import log_activity
 from backend.services.rag import (
     AIServiceError,
     add_chunks_to_vector_store,
@@ -193,6 +195,12 @@ async def upload_document(
                 }
             })
         add_chunks_to_vector_store(vector_chunks)
+
+        log_activity(db, user.id, activity.DOCUMENT_UPLOADED, db_doc.id, {
+            "filename": original_name,
+            "chunks": len(vector_chunks),
+        })
+        db.commit()
 
     except UnreadableDocumentError as e:
         logger.info("Rejected upload %r: %s", original_name, e)

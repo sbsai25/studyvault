@@ -11,6 +11,8 @@ from backend.deps import get_current_user
 from backend.models.user import User
 from backend.models.document import Document
 from backend.models.flashcard import FlashcardSet, Flashcard, FlashcardProgress
+from backend.services import activity
+from backend.services.activity import log_activity
 
 router = APIRouter(prefix="/flashcards", tags=["flashcards"])
 
@@ -274,6 +276,11 @@ def review_flashcard(
     progress.ease_factor = schedule.ease_factor
     progress.interval_days = schedule.interval_days
     progress.repetitions = schedule.repetitions
+
+    log_activity(db, user.id, activity.FLASHCARD_REVIEWED, card.id, {
+        "flashcard_set_id": card.flashcard_set_id,
+        "rating": difficulty,
+    })
 
     db.commit()
     db.refresh(progress)

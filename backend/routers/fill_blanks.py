@@ -10,6 +10,8 @@ from backend.deps import get_current_user
 from backend.models.user import User
 from backend.models.document import Document
 from backend.models.fill_blank import FillBlankSet, FillBlankQuestion, FillBlankAttempt
+from backend.services import activity
+from backend.services.activity import log_activity
 
 router = APIRouter(prefix="/fill-blanks", tags=["fill-blanks"])
 
@@ -187,6 +189,13 @@ def submit_fill_blanks(
         completed_at=datetime.utcnow(),
     )
     db.add(attempt)
+    db.flush()
+    log_activity(db, user.id, activity.FILL_BLANKS_SUBMITTED, fill_blank_set.id, {
+        "attempt_id": attempt.id,
+        "score": attempt.score,
+        "total": attempt.total_questions,
+        "percentage": _percentage(attempt.score, attempt.total_questions),
+    })
     db.commit()
     db.refresh(attempt)
 

@@ -4,6 +4,7 @@ temporary Chroma/upload directories BEFORE any backend module is imported.
 backend.database reads DATABASE_URL and backend.services.rag opens ChromaDB
 at import time, so this has to happen at module level, not in a fixture.
 """
+import gc
 import os
 import tempfile
 
@@ -47,3 +48,13 @@ def _fresh_schema():
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     yield
+
+
+@pytest.fixture(autouse=True)
+def _release_leaked_connections():
+    # Tests use `db = next(get_db())`, which closes the session immediately;
+    # later queries on it check out a connection that is only returned to the
+    # pool when the session is garbage-collected. Collect after every test so
+    # the pool (5 + 10 overflow) never runs dry.
+    yield
+    gc.collect()

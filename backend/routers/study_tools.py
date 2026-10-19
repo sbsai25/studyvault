@@ -14,6 +14,8 @@ from backend.models.chunk import Chunk
 from backend.models.flashcard import FlashcardSet, Flashcard
 from backend.models.quiz import Quiz, QuizQuestion
 from backend.models.fill_blank import FillBlankSet, FillBlankQuestion
+from backend.services import activity
+from backend.services.activity import log_activity
 from backend.services.rag import generate_flashcards, generate_quiz, generate_fill_blanks
 
 router = APIRouter(prefix="/tools", tags=["tools"])
@@ -114,6 +116,10 @@ def create_flashcards(request: ToolRequest, user: User = Depends(get_current_use
         if c.get("question") and c.get("answer")
     ]
     db.add_all(cards)
+    log_activity(db, user.id, activity.FLASHCARDS_GENERATED, flashcard_set.id, {
+        "document_id": doc.id,
+        "number_of_cards": len(cards),
+    })
     db.commit()
 
     return {
@@ -145,6 +151,11 @@ def create_quiz(request: QuizRequest, user: User = Depends(get_current_user), db
         for q in questions
     ]
     db.add(quiz)
+    db.flush()
+    log_activity(db, user.id, activity.QUIZ_GENERATED, quiz.id, {
+        "document_id": doc.id,
+        "number_of_questions": len(questions),
+    })
     db.commit()
     db.refresh(quiz)
 
@@ -180,6 +191,11 @@ def create_fill_blanks(request: FillBlanksRequest, user: User = Depends(get_curr
         for item in items
     ]
     db.add(fill_blank_set)
+    db.flush()
+    log_activity(db, user.id, activity.FILL_BLANKS_GENERATED, fill_blank_set.id, {
+        "document_id": doc.id,
+        "number_of_questions": len(items),
+    })
     db.commit()
     db.refresh(fill_blank_set)
 

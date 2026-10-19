@@ -10,6 +10,8 @@ from backend.deps import get_current_user
 from backend.models.user import User
 from backend.models.document import Document
 from backend.models.quiz import Quiz, QuizQuestion, QuizAttempt, QuizAnswer
+from backend.services import activity
+from backend.services.activity import log_activity
 
 router = APIRouter(prefix="/quizzes", tags=["quizzes"])
 
@@ -175,6 +177,13 @@ def submit_quiz(
     ]
     attempt.score = sum(1 for a in attempt.answers if a.is_correct)
     db.add(attempt)
+    db.flush()
+    log_activity(db, user.id, activity.QUIZ_SUBMITTED, quiz.id, {
+        "attempt_id": attempt.id,
+        "score": attempt.score,
+        "total": attempt.total_questions,
+        "percentage": _percentage(attempt.score, attempt.total_questions),
+    })
     db.commit()
     db.refresh(attempt)
 

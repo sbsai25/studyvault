@@ -15,6 +15,7 @@ from backend.routers.study_tools import router as tools_router
 from backend.routers.flashcards import router as flashcards_router
 from backend.routers.quizzes import router as quizzes_router
 from backend.routers.fill_blanks import router as fill_blanks_router
+from backend.routers.activity import router as activity_router
 
 app = FastAPI(title="StudyVault API")
 
@@ -53,6 +54,7 @@ app.include_router(tools_router)
 app.include_router(flashcards_router)
 app.include_router(quizzes_router)
 app.include_router(fill_blanks_router)
+app.include_router(activity_router)
 
 @app.get("/")
 def root():

@@ -9,6 +9,8 @@ from backend.deps import get_current_user
 from backend.models.user import User
 from backend.models.document import Document
 from backend.models.conversation import Conversation, Message
+from backend.services import activity
+from backend.services.activity import log_activity
 from backend.services.rag import search_chunks, generate_answer, generate_conversation_title
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -115,6 +117,10 @@ def chat_query(
 
     db.add(Message(conversation_id=conversation.id, role="user", content=request.query))
     db.add(Message(conversation_id=conversation.id, role="assistant", content=answer, sources=sources))
+    log_activity(db, user.id, activity.CHAT_MESSAGE, conversation.id, {
+        "document_id": request.document_id,
+        "sources": len(sources),
+    })
 
     # Commit conversation, messages and updated_at together
     db.commit()
