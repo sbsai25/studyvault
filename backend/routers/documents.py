@@ -1,4 +1,6 @@
 import os
+import re
+import uuid
 from typing import List
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -24,18 +26,23 @@ async def upload_document(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # Save file
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
+    # Keep only the base name of the client-supplied filename (strip any path parts)
+    original_name = os.path.basename((file.filename or "").replace("\\", "/")) or "upload"
+    file_ext = os.path.splitext(original_name)[1].lower()
+    if not re.fullmatch(r"\.[a-z0-9]{1,10}", file_ext):
+        file_ext = ""
+    file_type = file_ext[1:] if file_ext else "unknown"
+
+    # Save under a unique generated name so uploads can't escape UPLOAD_DIR
+    # or overwrite another user's file with the same name
+    file_path = os.path.join(UPLOAD_DIR, f"{uuid.uuid4().hex}{file_ext}")
     with open(file_path, "wb") as f:
         f.write(await file.read())
-        
+
     # Create document record
-    file_ext = os.path.splitext(file.filename)[1].lower()
-    file_type = file_ext[1:] if file_ext else "unknown"
-    
     db_doc = Document(
         user_id=user.id,
-        filename=file.filename,
+        filename=original_name,
         file_type=file_type,
         upload_path=file_path
     )

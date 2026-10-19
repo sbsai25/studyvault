@@ -4,10 +4,13 @@ venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.coverage
+htmlcov/
 
-# Environment variables
+# Environment variables (keep the template)
 .env
 .env.*
+!.env.example
 
 # Secrets
 *.pem
@@ -21,14 +24,20 @@ npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
 
-# IDE
+# IDE / tooling
 .vscode/
 .idea/
+.claude/
 
 # OS
 .DS_Store
 Thumbs.db
+
 # StudyVault runtime data
 .chroma/
 uploads/
-studyvault.db
+*.db
+*.sqlite3
+
+# Local notes
+logs/

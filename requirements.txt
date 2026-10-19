@@ -1,0 +1,31 @@
+# Versions pinned from the working development environment (Python 3.12)
+
+# API
+fastapi==0.141.1
+uvicorn==0.52.1
+python-multipart==0.0.32
+pydantic==2.13.4
+email-validator==2.3.0
+python-dotenv==1.2.2
+
+# Database
+SQLAlchemy==2.0.52
+psycopg[binary]==3.3.4
+
+# Auth
+PyJWT==2.13.0
+pwdlib[argon2]==0.3.1
+
+# RAG / AI
+google-genai==2.19.0
+chromadb==1.5.9
+langchain-text-splitters==1.1.2
+
+# Document parsing
+pypdf==6.16.2
+python-docx==1.2.0
+python-pptx==1.0.2
+
+# Testing
+pytest==9.1.1
+httpx==0.28.1

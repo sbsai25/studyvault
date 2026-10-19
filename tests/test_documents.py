@@ -53,3 +53,38 @@ def test_upload_and_delete_document(mock_get_embedding, tmp_path):
     # Verify deletion
     list_res2 = client.get("/documents/", headers=headers)
     assert len(list_res2.json()) == 0
+
+
+@patch("backend.services.rag.get_embedding")
+def test_upload_filename_cannot_escape_upload_dir(mock_get_embedding):
+    mock_get_embedding.return_value = [0.1] * 3072
+
+    token = setup_test_user()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    upload_res = client.post(
+        "/documents/upload",
+        files={"file": ("../../evil.txt", b"Path traversal test content.", "text/plain")},
+        headers=headers,
+    )
+    assert upload_res.status_code == 200
+    doc_id = upload_res.json()["document_id"]
+
+    # Only the base name is kept for display
+    docs = client.get("/documents/", headers=headers).json()
+    assert docs[0]["filename"] == "evil.txt"
+
+    # The file is stored inside the uploads directory under a generated name
+    from backend.database import SessionLocal
+    from backend.models.document import Document
+    from backend.routers.documents import UPLOAD_DIR
+
+    db = SessionLocal()
+    try:
+        stored_path = db.get(Document, doc_id).upload_path
+    finally:
+        db.close()
+    assert os.path.dirname(os.path.abspath(stored_path)) == os.path.abspath(UPLOAD_DIR)
+    assert os.path.basename(stored_path) != "evil.txt"
+
+    client.delete(f"/documents/{doc_id}", headers=headers)
