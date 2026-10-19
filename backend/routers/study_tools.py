@@ -13,7 +13,8 @@ from backend.models.document import Document
 from backend.models.chunk import Chunk
 from backend.models.flashcard import FlashcardSet, Flashcard
 from backend.models.quiz import Quiz, QuizQuestion
-from backend.services.rag import generate_flashcards, generate_quiz
+from backend.models.fill_blank import FillBlankSet, FillBlankQuestion
+from backend.services.rag import generate_flashcards, generate_quiz, generate_fill_blanks
 
 router = APIRouter(prefix="/tools", tags=["tools"])
 
@@ -23,6 +24,10 @@ class ToolRequest(BaseModel):
 
 class QuizRequest(ToolRequest):
     num_questions: int = Field(5, ge=3, le=20)
+
+
+class FillBlanksRequest(ToolRequest):
+    num_questions: int = Field(10, ge=3, le=20)
 
 
 def _title_from_filename(filename: str, suffix: str = "Flashcards") -> str:
@@ -149,4 +154,37 @@ def create_quiz(request: QuizRequest, user: User = Depends(get_current_user), db
         "number_of_questions": len(questions),
         # Full questions with answers, as the Dashboard has always displayed them
         "quiz": questions,
+    }
+
+
+@router.post("/fill-blanks")
+def create_fill_blanks(request: FillBlanksRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    doc, context_text = _owned_document_context(request.document_id, user, db)
+
+    items = generate_fill_blanks(context_text, count=request.num_questions)
+    if not items:
+        raise HTTPException(status_code=502, detail="Failed to generate fill-in-the-blank questions from this document")
+
+    fill_blank_set = FillBlankSet(
+        user_id=user.id,
+        document_id=doc.id,
+        title=_title_from_filename(doc.filename, "Fill-in-the-Blanks"),
+    )
+    fill_blank_set.questions = [
+        FillBlankQuestion(
+            sentence=item["sentence"],
+            answer=item["answer"],
+            accepted_answers=item["accepted_answers"],
+            hint=item["hint"],
+        )
+        for item in items
+    ]
+    db.add(fill_blank_set)
+    db.commit()
+    db.refresh(fill_blank_set)
+
+    return {
+        "fill_blank_set_id": fill_blank_set.id,
+        "title": fill_blank_set.title,
+        "number_of_questions": len(items),
     }

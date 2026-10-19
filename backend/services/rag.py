@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 from typing import List
 
 import chromadb
@@ -312,6 +313,52 @@ Text:
             "explanation": _clean_str(item.get("explanation")) or None,
         })
     return questions[:count]
+
+
+BLANK = "____"
+
+
+def generate_fill_blanks(context: str, count: int = 10) -> List[dict]:
+    """Returns [{sentence, answer, accepted_answers, hint}].
+
+    Each sentence must contain exactly one blank (any run of 3+ underscores
+    is normalised to "____"); other items are dropped.
+    """
+    prompt = f"""You are a helpful AI study assistant.
+Create {count} fill-in-the-blank questions based on the following text.
+For each one, take an important sentence or fact and replace ONE key term
+(a word or short phrase) with "____".
+Return ONLY a JSON array of objects. Each object should have:
+- 'sentence' (containing exactly one "____")
+- 'answer' (the exact term that was removed)
+- 'accepted_answers' (array of other correct forms, e.g. synonyms or abbreviations; may be empty)
+- 'hint' (a short clue that does not give the answer away)
+
+Text:
+{context}
+"""
+    items = []
+    for item in _generate_json(prompt):
+        if not isinstance(item, dict):
+            continue
+        sentence = re.sub(r"_{3,}", BLANK, _clean_str(item.get("sentence")))
+        answer = _clean_str(item.get("answer"))
+        if sentence.count(BLANK) != 1 or not answer:
+            continue
+        raw_accepted = item.get("accepted_answers")
+        accepted = []
+        if isinstance(raw_accepted, list):
+            for a in raw_accepted:
+                a = _clean_str(a)
+                if a and a.casefold() != answer.casefold() and a not in accepted:
+                    accepted.append(a)
+        items.append({
+            "sentence": sentence,
+            "answer": answer,
+            "accepted_answers": accepted,
+            "hint": _clean_str(item.get("hint")) or None,
+        })
+    return items[:count]
 
 def generate_conversation_title(query: str) -> str:
     """

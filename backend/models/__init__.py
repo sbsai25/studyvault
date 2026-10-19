@@ -6,6 +6,7 @@ from .chunk import Chunk
 from .conversation import Conversation, Message
 from .flashcard import FlashcardSet, Flashcard, FlashcardProgress
 from .quiz import Quiz, QuizQuestion, QuizAttempt, QuizAnswer
+from .fill_blank import FillBlankSet, FillBlankQuestion, FillBlankAttempt
 from .activity import Activity
 
 __all__ = [
@@ -22,5 +23,8 @@ __all__ = [
     "QuizQuestion",
     "QuizAttempt",
     "QuizAnswer",
+    "FillBlankSet",
+    "FillBlankQuestion",
+    "FillBlankAttempt",
     "Activity",
 ]

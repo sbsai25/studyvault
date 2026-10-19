@@ -29,6 +29,8 @@ class User(Base):
     flashcard_progress = relationship("FlashcardProgress", cascade="all, delete-orphan")
     quizzes = relationship("Quiz", cascade="all, delete-orphan")
     quiz_attempts = relationship("QuizAttempt", cascade="all, delete-orphan")
+    fill_blank_sets = relationship("FillBlankSet", cascade="all, delete-orphan")
+    fill_blank_attempts = relationship("FillBlankAttempt", cascade="all, delete-orphan")
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
