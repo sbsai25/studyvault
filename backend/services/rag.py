@@ -15,7 +15,8 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-GENERATION_MODEL = "gemini-3.6-flash"
+# Each model has its own free-tier quota, so this can be switched in .env
+GENERATION_MODEL = os.getenv("GEMINI_MODEL") or "gemini-3.5-flash-lite"
 EMBEDDING_MODEL = "gemini-embedding-2"
 
 # Initialize Gemini

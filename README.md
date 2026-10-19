@@ -57,7 +57,7 @@ Query embedding: `gemini-embedding-2` (task type RETRIEVAL_QUERY)
 ChromaDB similarity search: top 4 chunks, filtered to the current user
   (and to the chosen document, if any)
         ↓
-Gemini `gemini-3.6-flash` answers using the retrieved context,
+Gemini (`GEMINI_MODEL`, default `gemini-3.5-flash-lite`) answers using the retrieved context,
   with the last 6 messages of the conversation for follow-up questions
         ↓
 Answer + sources (file name, chunk index, snippet), saved to the conversation
@@ -113,7 +113,7 @@ flowchart LR
 | **Backend** | FastAPI app (`backend/main.py`) with routers for `auth`, `documents`, `chat`, `tools`, `flashcards`, `quizzes`, `fill-blanks`, and `activity`/`stats`. CORS origins come from `CORS_ORIGINS` (default: the Vite dev server). |
 | **Database** | PostgreSQL via SQLAlchemy 2.0 ORM and the psycopg 3 driver. Tables: users, documents, chunks, conversations, messages, flashcard_sets, flashcards, flashcard_progress, quizzes, quiz_questions, quiz_attempts, quiz_answers, fill_blank_sets, fill_blank_questions, fill_blank_attempts, activities, refresh_tokens. |
 | **Vector database** | ChromaDB `PersistentClient` stored in `.chroma/` (or `CHROMA_PATH`), with one collection (`studyvault_chunks`). Every query is filtered by `user_id`, and optionally by `document_id`. |
-| **AI/LLM layer** | Google Gemini via the `google-genai` SDK: `gemini-embedding-2` for embeddings and `gemini-3.6-flash` for answers, chat titles, flashcards, quizzes, and fill-in-the-blanks. Study material uses JSON output mode (`response_mime_type="application/json"`), and each generated item is validated before it is saved. |
+| **AI/LLM layer** | Google Gemini via the `google-genai` SDK: `gemini-embedding-2` for embeddings and `GEMINI_MODEL` (default `gemini-3.5-flash-lite`) for answers, chat titles, flashcards, quizzes, and fill-in-the-blanks. Study material uses JSON output mode (`response_mime_type="application/json"`), and each generated item is validated before it is saved. |
 | **Authentication** | Argon2 password hashing (`pwdlib`), HS256 JWTs (`PyJWT`), and refresh tokens tracked in the database. See [Authentication](#authentication). |
 | **Document pipeline** | Upload → check type and size → save to disk under a generated unique name (the original filename is kept only for display) → extract text → chunk → store chunks in PostgreSQL → embed → store in ChromaDB. If any step fails, the file, rows, and vectors are removed. Deleting a document removes its vectors, file, database rows, and the study material generated from it. |
 
@@ -297,6 +297,7 @@ cp .env.example .env
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | No | Access token lifetime (default `30`) |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | No | Refresh token lifetime (default `7`) |
 | `TEST_DATABASE_URL` | For tests | Separate database for pytest. Its name must end in `_test` and it must be on `localhost`, `127.0.0.1`, or the Docker `db` host. **The test suite drops and recreates every table in it.** |
+| `GEMINI_MODEL` | No | Gemini model for answers, titles, and study material (default `gemini-3.5-flash-lite`). Each model has its own free-tier quota, so switching models is a quick fix when one runs out. |
 | `CORS_ORIGINS` | No | Comma-separated allowed frontend origins (default `http://localhost:5173`) |
 | `MAX_UPLOAD_MB` | No | Maximum upload size in megabytes (default `20`) |
 | `CHROMA_PATH` | No | Where ChromaDB stores vectors (default `.chroma/` in the project root) |
@@ -304,7 +305,7 @@ cp .env.example .env
 
 `.env` is git-ignored. Never commit real values.
 
-> **Gemini quota:** free-tier keys allow only 5 generation requests per minute per model. Each chat message is one request (two for the first message of a conversation, which also generates a title), and each flashcard, quiz, or fill-in-the-blank set is one. Past that limit the API returns `502` until the minute is up.
+> **Gemini quota:** free-tier keys have small per-minute and per-day limits for each model (for example 5 per minute and 20 per day on some models). Each chat message is one request (two for the first message of a conversation, which also generates a title), and each flashcard, quiz, or fill-in-the-blank set is one. Past a limit, the API returns `502` until the limit resets; the backend log shows `429 RESOURCE_EXHAUSTED` with the quota that ran out. To keep going, set `GEMINI_MODEL` to another model and restart the API.
 
 ## Running Locally
 
