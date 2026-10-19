@@ -1,6 +1,6 @@
 # StudyVault
 
-An AI study assistant: upload your notes, ask questions about them, and turn them into flashcards, quizzes, and fill-in-the-blank exercises. Built with a FastAPI + PostgreSQL backend, a ChromaDB vector store, Google Gemini, and a React frontend.
+An AI study assistant: upload your notes, ask questions about them, and turn them into flashcards and fill-in-the-blank exercises. Built with a FastAPI + PostgreSQL backend, a ChromaDB vector store, Google Gemini, and a React frontend.
 
 ## Overview
 
@@ -8,8 +8,8 @@ Students collect PDFs, slides, and notes, but searching through them and turning
 
 - **Ask questions** about your documents and get answers based on retrieval-augmented generation (RAG), with the source passages listed under each answer. Follow-up questions understand the conversation so far.
 - **Generate flashcards** from a document and study them with spaced repetition.
-- **Take multiple-choice quizzes** and **fill-in-the-blank exercises** generated from a document, get a score with explanations, and review past attempts.
-- **Track progress**: activity history, study streaks, and quiz averages.
+- **Practise with fill-in-the-blank exercises** generated from a document, get a score, and review past attempts.
+- **Track progress**: activity history, study streaks, and average scores.
 
 Each user has their own account. Documents, retrieval results, chats, and study material are scoped to the logged-in user.
 
@@ -26,11 +26,10 @@ Each user has their own account. Documents, retrieval results, chats, and study 
 - Study material generated from the **whole document**, not just its beginning
 - AI-generated flashcard decks (5–15 cards per document) with a flip-card study mode
 - Spaced repetition: a modified SM-2 schedule that adapts each card's interval to your ratings
-- Multiple-choice quizzes (3–20 questions) with explanations, scoring, and attempt history
 - Fill-in-the-blank exercises with forgiving answer matching and accepted alternatives
 - Activity log and a stats endpoint (counts, cards due, reviews this week, averages, streaks)
 - Automatic retries when Gemini is briefly overloaded; a generic error message if it still fails
-- Backend test suite (pytest, 128 tests) that runs against a separate test database
+- Backend test suite (pytest, 111 tests) that runs against a separate test database
 
 ## AI/RAG Pipeline
 
@@ -85,15 +84,15 @@ flowchart LR
         AUTH["/auth<br/>register · login · refresh · logout · me"]
         DOCS["/documents<br/>upload · list · delete"]
         CHAT["/chat<br/>RAG Q&A · conversations"]
-        TOOLS["/tools<br/>flashcards · quiz · fill-blanks"]
+        TOOLS["/tools<br/>flashcards · fill-blanks"]
         CARDS["/flashcards<br/>decks · review · due"]
-        PRACTICE["/quizzes · /fill-blanks<br/>take · score · attempts"]
+        PRACTICE["/fill-blanks<br/>take · score · attempts"]
         STATS["/activity · /stats"]
         DEP["get_current_user<br/>(JWT validation)"]
         RAG["services/rag.py"]
     end
 
-    PG[("PostgreSQL<br/>users · documents · chunks · conversations<br/>flashcards · quizzes · fill-blanks<br/>activities · refresh_tokens")]
+    PG[("PostgreSQL<br/>users · documents · chunks · conversations<br/>flashcards · fill-blanks<br/>activities · refresh_tokens")]
     CH[("ChromaDB<br/>persistent vector store")]
     FS[["uploads/<br/>original files"]]
     GEM["Google Gemini<br/>embeddings + generation"]
@@ -110,16 +109,16 @@ flowchart LR
 | Layer | Implementation |
 |---|---|
 | **Frontend** | React 19 SPA built with Vite and React Router. `AuthContext` holds the logged-in user, `ProtectedRoute` guards pages, and an Axios client attaches the access token and refreshes it on `401` (one shared refresh call even when several requests fail at once, since refresh tokens are single-use). `src/api/client.js` has a helper for every API endpoint. Assistant answers render as Markdown (`react-markdown`). |
-| **Backend** | FastAPI app (`backend/main.py`) with routers for `auth`, `documents`, `chat`, `tools`, `flashcards`, `quizzes`, `fill-blanks`, and `activity`/`stats`. CORS origins come from `CORS_ORIGINS` (default: the Vite dev server). |
-| **Database** | PostgreSQL via SQLAlchemy 2.0 ORM and the psycopg 3 driver. Tables: users, documents, chunks, conversations, messages, flashcard_sets, flashcards, flashcard_progress, quizzes, quiz_questions, quiz_attempts, quiz_answers, fill_blank_sets, fill_blank_questions, fill_blank_attempts, activities, refresh_tokens. |
+| **Backend** | FastAPI app (`backend/main.py`) with routers for `auth`, `documents`, `chat`, `tools`, `flashcards`, `fill-blanks`, and `activity`/`stats`. CORS origins come from `CORS_ORIGINS` (default: the Vite dev server). |
+| **Database** | PostgreSQL via SQLAlchemy 2.0 ORM and the psycopg 3 driver. Tables: users, documents, chunks, conversations, messages, flashcard_sets, flashcards, flashcard_progress, fill_blank_sets, fill_blank_questions, fill_blank_attempts, activities, refresh_tokens. |
 | **Vector database** | ChromaDB `PersistentClient` stored in `.chroma/` (or `CHROMA_PATH`), with one collection (`studyvault_chunks`). Every query is filtered by `user_id`, and optionally by `document_id`. |
-| **AI/LLM layer** | Google Gemini via the `google-genai` SDK: `gemini-embedding-2` for embeddings and `GEMINI_MODEL` (default `gemini-3.5-flash-lite`) for answers, chat titles, flashcards, quizzes, and fill-in-the-blanks. Study material uses JSON output mode (`response_mime_type="application/json"`), and each generated item is validated before it is saved. |
+| **AI/LLM layer** | Google Gemini via the `google-genai` SDK: `gemini-embedding-2` for embeddings and `GEMINI_MODEL` (default `gemini-3.5-flash-lite`) for answers, chat titles, flashcards, and fill-in-the-blanks. Study material uses JSON output mode (`response_mime_type="application/json"`), and each generated item is validated before it is saved. |
 | **Authentication** | Argon2 password hashing (`pwdlib`), HS256 JWTs (`PyJWT`), and refresh tokens tracked in the database. See [Authentication](#authentication). |
 | **Document pipeline** | Upload → check type and size → save to disk under a generated unique name (the original filename is kept only for display) → extract text → chunk → store chunks in PostgreSQL → embed → store in ChromaDB. If any step fails, the file, rows, and vectors are removed. Deleting a document removes its vectors, file, database rows, and the study material generated from it. |
 
 ## Study material generation
 
-Flashcards, quizzes, and fill-in-the-blanks are generated from the **whole document**, within a 24,000-character budget. If the document is longer, the largest number of evenly spaced chunks that fits is used, always including the first and last chunk and keeping document order. If generation produces no valid items, the API returns `502` and saves nothing.
+Flashcards and fill-in-the-blanks are generated from the **whole document**, within a 24,000-character budget. If the document is longer, the largest number of evenly spaced chunks that fits is used, always including the first and last chunk and keeping document order. If generation produces no valid items, the API returns `502` and saves nothing.
 
 ## Flashcards
 
@@ -136,29 +135,20 @@ Flashcards, quizzes, and fill-in-the-blanks are generated from the **whole docum
 
 Other flashcard endpoints: list decks (`GET /flashcards`), view a deck with per-card progress (`GET /flashcards/{set_id}`), delete a deck (`DELETE /flashcards/{set_id}`), cards due for review across all decks (`GET /flashcards/due`), and cards to study now in one deck, meaning never reviewed or overdue (`GET /flashcards/{set_id}/due`). The "due" endpoints are not yet shown in the UI.
 
-## Quizzes
-
-1. On the dashboard, choose **Quiz** next to a document (`POST /tools/quiz`, optional `num_questions` from 3 to 20, default 5).
-2. Gemini writes multiple-choice questions, each with options, the correct answer, and a short explanation. The quiz is saved, and the response still includes the full questions, which the dashboard displays.
-3. To take a quiz: `GET /quizzes/{id}` returns the questions and options **without** answers, then `POST /quizzes/{id}/submit` with `{"answers": [{"question_id", "selected_answer"}]}`.
-4. The submit response has `score` (correct answers), `total` (all questions in the quiz), `percentage`, and per-question results with the correct answer and explanation. Answers are matched ignoring case and surrounding spaces. Unanswered questions count as wrong; answering the same question twice, or a question from another quiz, returns `422`.
-
-Every submission is saved as a new attempt. Other endpoints: list quizzes with best scores (`GET /quizzes`), list attempts (`GET /quizzes/{id}/attempts`), review one attempt (`GET /quizzes/attempts/{attempt_id}`), and delete a quiz (`DELETE /quizzes/{id}`).
-
 ## Fill-in-the-blanks
 
 1. `POST /tools/fill-blanks` (optional `num_questions` from 3 to 20, default 10) asks Gemini for sentences from the document with one key term replaced by `____`, the answer, any accepted alternatives (synonyms, abbreviations), and a hint.
-2. `GET /fill-blanks/{id}` returns the sentences and hints **without** answers. `POST /fill-blanks/{id}/submit` takes `{"answers": [{"question_id", "answer"}]}` and returns the same score shape as quizzes.
+2. `GET /fill-blanks/{id}` returns the sentences and hints **without** answers. `POST /fill-blanks/{id}/submit` takes `{"answers": [{"question_id", "answer"}]}` and returns `score` (correct answers), `total` (all questions in the set), `percentage`, and per-question results with the correct answer. Unanswered questions count as wrong; answering the same question twice, or a question from another set, returns `422`. Every submission is saved as a new attempt.
 3. Answer matching ignores case, extra spaces, and sentence punctuation, quotes, or brackets at the ends (`"Photosynthesis."` matches `photosynthesis`). Characters inside an answer, and symbols that change its meaning, still count: `co-op` ≠ `coop`, `3.5` ≠ `35`, `C++` ≠ `C`.
 
 The same list, attempts, attempt review, and delete endpoints exist under `/fill-blanks`.
 
 ## Progress and stats
 
-Successful actions are recorded in an activity log: uploads, chat messages, generating study material, flashcard reviews, and quiz and fill-in-the-blank submissions (with their scores). A failed or rejected request records nothing.
+Successful actions are recorded in an activity log: uploads, chat messages, generating study material, flashcard reviews, and fill-in-the-blank submissions (with their scores). A failed or rejected request records nothing.
 
 - `GET /activity?limit=20&offset=0`: the user's recent activity, newest first.
-- `GET /stats`: counts of documents, decks, cards (and cards never reviewed), quizzes, and fill-in-the-blank sets; cards due now; reviews in the last 7 days; attempts and average percentage for quizzes and fill-in-the-blanks; activity per day for the last 14 days; and the current and longest **study streak** (consecutive UTC days with any activity; the current streak still counts yesterday until today ends).
+- `GET /stats`: counts of documents, decks, cards (and cards never reviewed), and fill-in-the-blank sets; cards due now; reviews in the last 7 days; fill-in-the-blank attempts and average percentage; activity per day for the last 14 days; and the current and longest **study streak** (consecutive UTC days with any activity; the current streak still counts yesterday until today ends).
 
 ## Authentication
 
@@ -220,15 +210,14 @@ studyvault/
 │   ├── migrate_db.py      # Add missing columns/tables to an existing DB
 │   ├── verify_db.py       # Print tables and row counts (dev utility)
 │   ├── models/            # SQLAlchemy models (user, document, chunk, conversation,
-│   │                      #   flashcard, quiz, activity)
+│   │                      #   flashcard, fill_blank, activity, refresh_token)
 │   ├── schemas/           # Pydantic request/response schemas
 │   ├── routers/
 │   │   ├── auth.py        # /auth
 │   │   ├── documents.py   # /documents: upload, extract, chunk, embed
 │   │   ├── chat.py        # /chat: RAG Q&A and conversations
-│   │   ├── study_tools.py # /tools: flashcard, quiz and fill-in-the-blank generation
+│   │   ├── study_tools.py # /tools: flashcard and fill-in-the-blank generation
 │   │   ├── flashcards.py  # /flashcards: decks, SM-2 reviews, due cards
-│   │   ├── quizzes.py     # /quizzes: take, score, attempts
 │   │   ├── fill_blanks.py # /fill-blanks: take, score, attempts
 │   │   └── activity.py    # /activity and /stats
 │   ├── services/
@@ -305,7 +294,7 @@ cp .env.example .env
 
 `.env` is git-ignored. Never commit real values.
 
-> **Gemini quota:** free-tier keys have small per-minute and per-day limits for each model (for example 5 per minute and 20 per day on some models). Each chat message is one request (two for the first message of a conversation, which also generates a title), and each flashcard, quiz, or fill-in-the-blank set is one. Past a limit, the API returns `502` until the limit resets; the backend log shows `429 RESOURCE_EXHAUSTED` with the quota that ran out. To keep going, set `GEMINI_MODEL` to another model and restart the API.
+> **Gemini quota:** free-tier keys have small per-minute and per-day limits for each model (for example 5 per minute and 20 per day on some models). Each chat message is one request (two for the first message of a conversation, which also generates a title), and each flashcard or fill-in-the-blank set is one. Past a limit, the API returns `502` until the limit resets; the backend log shows `429 RESOURCE_EXHAUSTED` with the quota that ran out. To keep going, set `GEMINI_MODEL` to another model and restart the API.
 
 ## Running Locally
 
@@ -325,7 +314,7 @@ npm run dev
 
 The frontend expects the API at `http://127.0.0.1:8000`, and the backend allows CORS from `http://localhost:5173` by default.
 
-**Upgrading an existing database:** run `python -m backend.migrate_db`. It creates missing tables and adds newer columns (for example `messages.sources` and the spaced-repetition columns on `flashcard_progress`) without touching existing data, and it is safe to run more than once. Existing flashcard progress starts the new schedule from scratch at its next review.
+**Upgrading an existing database:** run `python -m backend.migrate_db`. It creates missing tables and adds newer columns (for example `messages.sources` and the spaced-repetition columns on `flashcard_progress`), and it is safe to run more than once. It also deletes data from removed features: the quiz tables (`quizzes`, `quiz_questions`, `quiz_attempts`, `quiz_answers`) and quiz activity records are dropped, since the quiz feature was removed. Everything else is left as it is. Existing flashcard progress starts the new schedule from scratch at its next review.
 
 ### Running tests
 
@@ -353,13 +342,13 @@ This starts PostgreSQL 16 (exposed on host port `5433`, so it doesn't clash with
 
 ## Screenshots
 
-> **TODO:** Add screenshots of the dashboard (upload + chat with sources), flashcard study mode, and a generated quiz.
+> **TODO:** Add screenshots of the dashboard (upload + chat with sources), and flashcard study mode.
 
 ## Future Improvements
 
 These are **not implemented yet**:
 
-- UI for the newer backend features: taking quizzes and fill-in-the-blanks, attempt history, "due for review" views, a stats/progress page, a conversation history sidebar, per-document chat, and source snippets. The API and the `client.js` helpers already exist.
+- UI for the newer backend features: fill-in-the-blanks, attempt history, "due for review" views, a stats/progress page, a conversation history sidebar, per-document chat, and source snippets. The API and the `client.js` helpers already exist.
 - Enabling DOCX, PPTX, and Markdown in the upload file picker (the backend already parses them)
 - Background processing for large uploads (they are currently processed during the request)
 - A shared rate-limit store (e.g. Redis) so limits hold across several API workers

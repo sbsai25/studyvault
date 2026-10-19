@@ -11,7 +11,6 @@ from backend.models.user import User
 from backend.models.activity import Activity
 from backend.models.document import Document
 from backend.models.flashcard import FlashcardSet, Flashcard, FlashcardProgress
-from backend.models.quiz import Quiz, QuizAttempt
 from backend.models.fill_blank import FillBlankSet, FillBlankAttempt
 from backend.services import activity
 
@@ -115,7 +114,6 @@ def get_stats(user: User = Depends(get_current_user), db: Session = Depends(get_
         .count()
     )
 
-    quiz_attempts = db.query(QuizAttempt).filter(QuizAttempt.user_id == user.id).all()
     fill_blank_attempts = db.query(FillBlankAttempt).filter(FillBlankAttempt.user_id == user.id).all()
 
     # Activity per UTC day, for the chart and the streaks
@@ -142,9 +140,6 @@ def get_stats(user: User = Depends(get_current_user), db: Session = Depends(get_
         "flashcards_never_reviewed": total_cards - reviewed_cards,
         "cards_due_now": cards_due,
         "reviews_last_7_days": reviews_last_7_days,
-        "quizzes": db.query(Quiz).filter(Quiz.user_id == user.id).count(),
-        "quiz_attempts": len(quiz_attempts),
-        "average_quiz_percentage": _average_percentage(quiz_attempts),
         "fill_blank_sets": db.query(FillBlankSet).filter(FillBlankSet.user_id == user.id).count(),
         "fill_blank_attempts": len(fill_blank_attempts),
         "average_fill_blank_percentage": _average_percentage(fill_blank_attempts),

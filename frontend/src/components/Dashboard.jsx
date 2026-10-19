@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { uploadDocument, getDocuments, sendChatMessage, deleteDocument, generateFlashcards, generateQuiz } from '../api/client';
+import { uploadDocument, getDocuments, sendChatMessage, deleteDocument, generateFlashcards } from '../api/client';
 import ReactMarkdown from 'react-markdown';
 
 function Dashboard() {
@@ -14,8 +14,6 @@ function Dashboard() {
   const [chatHistory, setChatHistory] = useState([]);
   const [isAsking, setIsAsking] = useState(false);
 
-  const [studyToolResult, setStudyToolResult] = useState(null);
-  const [isGeneratingTool, setIsGeneratingTool] = useState(false);
   const [isGeneratingFlashcards, setIsGeneratingFlashcards] = useState(false);
 
   useEffect(() => {
@@ -82,20 +80,6 @@ function Dashboard() {
     }
   };
 
-  const handleGenerateQuiz = async (id) => {
-    setIsGeneratingTool(true);
-    setStudyToolResult(null);
-    try {
-      const result = await generateQuiz(id);
-      setStudyToolResult({ type: 'quiz', data: result.quiz });
-    } catch (error) {
-      console.error(error);
-      alert("Failed to generate quiz.");
-    } finally {
-      setIsGeneratingTool(false);
-    }
-  };
-
 
   const handleChat = async (e) => {
     e.preventDefault();
@@ -147,45 +131,16 @@ function Dashboard() {
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button
                   onClick={() => handleGenerateFlashcards(doc.id)}
-                  disabled={isGeneratingFlashcards || isGeneratingTool}
+                  disabled={isGeneratingFlashcards}
                   style={{ flex: 1, padding: '0.25rem', fontSize: '0.8rem' }}
                 >
                   {isGeneratingFlashcards ? 'Generating flashcards...' : 'Flashcards'}
-                </button>
-                <button
-                  onClick={() => handleGenerateQuiz(doc.id)}
-                  disabled={isGeneratingTool || isGeneratingFlashcards}
-                  style={{ flex: 1, padding: '0.25rem', fontSize: '0.8rem' }}
-                >
-                  Quiz
                 </button>
               </div>
             </li>
           ))}
           {documents.length === 0 && <p style={{ color: '#666' }}>No documents uploaded yet.</p>}
         </ul>
-
-        {/* Study Tool Results */}
-        <div style={{ marginTop: '2rem' }}>
-          {isGeneratingTool && <p><em>Generating study tools...</em></p>}
-          {studyToolResult && studyToolResult.type === 'quiz' && (
-            <div>
-              <h3>Quiz</h3>
-              {studyToolResult.data.map((q, i) => (
-                <div key={i} style={{ marginBottom: '1rem', border: '1px solid #ccc', padding: '0.5rem', borderRadius: '4px' }}>
-                  <strong>{i+1}. {q.question}</strong>
-                  <ul style={{ listStyle: 'circle', paddingLeft: '1.5rem', marginTop: '0.25rem' }}>
-                    {q.options.map((opt, j) => (
-                      <li key={j} style={{ color: opt === q.correct_answer ? 'green' : 'inherit', fontWeight: opt === q.correct_answer ? 'bold' : 'normal' }}>
-                        {opt} {opt === q.correct_answer && '(Correct)'}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
 

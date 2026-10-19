@@ -131,47 +131,6 @@ export const generateFlashcards = async (documentId) => {
   return response.data;
 };
 
-export const generateQuiz = async (documentId, numQuestions = null) => {
-  const payload = { document_id: documentId };
-  if (numQuestions) {
-    payload.num_questions = numQuestions; // 3-20, default 5
-  }
-  const response = await client.post('/tools/quiz', payload);
-  return response.data;
-};
-
-export const getQuizzes = async () => {
-  const response = await client.get('/quizzes');
-  return response.data;
-};
-
-// Questions and options only; answers come back after submitting
-export const getQuiz = async (quizId) => {
-  const response = await client.get(`/quizzes/${quizId}`);
-  return response.data;
-};
-
-// answers: [{ question_id, selected_answer }]; unanswered questions count as wrong
-export const submitQuiz = async (quizId, answers) => {
-  const response = await client.post(`/quizzes/${quizId}/submit`, { answers });
-  return response.data;
-};
-
-export const getQuizAttempts = async (quizId) => {
-  const response = await client.get(`/quizzes/${quizId}/attempts`);
-  return response.data;
-};
-
-export const getQuizAttempt = async (attemptId) => {
-  const response = await client.get(`/quizzes/attempts/${attemptId}`);
-  return response.data;
-};
-
-export const deleteQuiz = async (quizId) => {
-  const response = await client.delete(`/quizzes/${quizId}`);
-  return response.data;
-};
-
 export const generateFillBlanks = async (documentId, numQuestions = null) => {
   const payload = { document_id: documentId };
   if (numQuestions) {

@@ -301,52 +301,6 @@ Text:
     return cards
 
 
-def generate_quiz(context: str, count: int = 5) -> List[dict]:
-    """Returns [{question, options, correct_answer, explanation}].
-
-    Items are dropped unless they have a question, at least two distinct
-    options, and a correct_answer that matches one of the options.
-    """
-    prompt = f"""You are a helpful AI study assistant.
-Create a {count}-question multiple choice quiz based on the following text.
-Return ONLY a JSON array of objects. Each object should have:
-- 'question'
-- 'options' (array of 4 strings)
-- 'correct_answer' (the exact string of the correct option)
-- 'explanation' (one or two sentences explaining why the answer is correct)
-
-Text:
-{context}
-"""
-    questions = []
-    for item in _generate_json(prompt):
-        if not isinstance(item, dict):
-            continue
-        question = _clean_str(item.get("question"))
-        raw_options = item.get("options")
-        if not question or not isinstance(raw_options, list):
-            continue
-        options = []
-        for o in raw_options:
-            o = _clean_str(o)
-            if o and o not in options:
-                options.append(o)
-        if len(options) < 2:
-            continue
-        # Normalise the correct answer to the exact option text
-        wanted = _clean_str(item.get("correct_answer")).casefold()
-        correct = next((o for o in options if o.casefold() == wanted), None)
-        if correct is None:
-            continue
-        questions.append({
-            "question": question,
-            "options": options,
-            "correct_answer": correct,
-            "explanation": _clean_str(item.get("explanation")) or None,
-        })
-    return questions[:count]
-
-
 BLANK = "____"
 
 

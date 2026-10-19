@@ -15,7 +15,7 @@ class Activity(Base):
         index=True,
     )
     activity_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    # Generic reference ID for the related entity (e.g., document_id, quiz_id, etc.)
+    # Generic reference ID for the related entity (e.g., document_id, flashcard set id, etc.)
     related_entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     metadata_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

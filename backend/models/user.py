@@ -27,8 +27,6 @@ class User(Base):
     activities = relationship("Activity", back_populates="user", cascade="all, delete-orphan")
     flashcard_sets = relationship("FlashcardSet", cascade="all, delete-orphan")
     flashcard_progress = relationship("FlashcardProgress", cascade="all, delete-orphan")
-    quizzes = relationship("Quiz", cascade="all, delete-orphan")
-    quiz_attempts = relationship("QuizAttempt", cascade="all, delete-orphan")
     fill_blank_sets = relationship("FillBlankSet", cascade="all, delete-orphan")
     fill_blank_attempts = relationship("FillBlankAttempt", cascade="all, delete-orphan")
     refresh_tokens = relationship("RefreshToken", cascade="all, delete-orphan")

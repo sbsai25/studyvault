@@ -12,20 +12,15 @@ from backend.models.user import User
 from backend.models.document import Document
 from backend.models.chunk import Chunk
 from backend.models.flashcard import FlashcardSet, Flashcard
-from backend.models.quiz import Quiz, QuizQuestion
 from backend.models.fill_blank import FillBlankSet, FillBlankQuestion
 from backend.services import activity
 from backend.services.activity import log_activity
-from backend.services.rag import generate_flashcards, generate_quiz, generate_fill_blanks
+from backend.services.rag import generate_flashcards, generate_fill_blanks
 
 router = APIRouter(prefix="/tools", tags=["tools"])
 
 class ToolRequest(BaseModel):
     document_id: int
-
-
-class QuizRequest(ToolRequest):
-    num_questions: int = Field(5, ge=3, le=20)
 
 
 class FillBlanksRequest(ToolRequest):
@@ -127,46 +122,6 @@ def create_flashcards(request: ToolRequest, user: User = Depends(get_current_use
         "title": flashcard_set.title,
         "number_of_cards": len(cards),
     }
-
-@router.post("/quiz")
-def create_quiz(request: QuizRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    doc, context_text = _owned_document_context(request.document_id, user, db)
-
-    questions = generate_quiz(context_text, count=request.num_questions)
-    if not questions:
-        raise HTTPException(status_code=502, detail="Failed to generate a quiz from this document")
-
-    quiz = Quiz(
-        user_id=user.id,
-        document_id=doc.id,
-        title=_title_from_filename(doc.filename, "Quiz"),
-    )
-    quiz.questions = [
-        QuizQuestion(
-            question=q["question"],
-            options=q["options"],
-            correct_answer=q["correct_answer"],
-            explanation=q.get("explanation"),
-        )
-        for q in questions
-    ]
-    db.add(quiz)
-    db.flush()
-    log_activity(db, user.id, activity.QUIZ_GENERATED, quiz.id, {
-        "document_id": doc.id,
-        "number_of_questions": len(questions),
-    })
-    db.commit()
-    db.refresh(quiz)
-
-    return {
-        "quiz_id": quiz.id,
-        "title": quiz.title,
-        "number_of_questions": len(questions),
-        # Full questions with answers, as the Dashboard has always displayed them
-        "quiz": questions,
-    }
-
 
 @router.post("/fill-blanks")
 def create_fill_blanks(request: FillBlanksRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):

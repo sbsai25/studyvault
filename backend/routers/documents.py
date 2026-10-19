@@ -253,7 +253,7 @@ def delete_document(document_id: int, user: User = Depends(get_current_user), db
     # Remove file from disk
     _remove_file(doc.upload_path)
 
-    # Delete from the database (cascade handles chunks, flashcard sets and quizzes)
+    # Delete from the database (cascade handles chunks, flashcard sets and fill-in-the-blank sets)
     db.delete(doc)
     db.commit()
 

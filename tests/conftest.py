@@ -35,6 +35,7 @@ os.environ["CHROMA_PATH"] = tempfile.mkdtemp(prefix="studyvault_chroma_")
 os.environ["UPLOAD_DIR"] = tempfile.mkdtemp(prefix="studyvault_uploads_")
 
 import pytest  # noqa: E402
+from sqlalchemy import text  # noqa: E402
 
 import backend.models  # noqa: E402,F401  (registers every model on Base.metadata)
 from backend.database import engine  # noqa: E402
@@ -45,7 +46,12 @@ from backend.models.base import Base  # noqa: E402
 def _fresh_schema():
     # Reset at the start rather than the end: some tests open sessions with
     # next(get_db()) and never close them, which would block a teardown drop.
-    Base.metadata.drop_all(bind=engine)
+    # Recreate the whole schema (not just the known tables) so tables left
+    # over from removed features can't block the reset. Only ever runs
+    # against the *_test database checked above.
+    with engine.begin() as conn:
+        conn.execute(text("DROP SCHEMA public CASCADE"))
+        conn.execute(text("CREATE SCHEMA public"))
     Base.metadata.create_all(bind=engine)
     yield
 

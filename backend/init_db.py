@@ -6,7 +6,6 @@ from backend.models.document import Document
 from backend.models.chunk import Chunk
 from backend.models.conversation import Conversation, Message
 from backend.models.flashcard import FlashcardSet, Flashcard, FlashcardProgress
-from backend.models.quiz import Quiz, QuizQuestion, QuizAttempt, QuizAnswer
 from backend.models.fill_blank import FillBlankSet, FillBlankQuestion, FillBlankAttempt
 from backend.models.activity import Activity
 from backend.models.refresh_token import RefreshToken

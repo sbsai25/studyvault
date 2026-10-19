@@ -18,7 +18,6 @@ class Document(Base):
     user = relationship("User", back_populates="documents")
     chunks = relationship("Chunk", back_populates="document", cascade="all, delete-orphan")
     flashcard_sets = relationship("FlashcardSet", cascade="all, delete-orphan")
-    quizzes = relationship("Quiz", cascade="all, delete-orphan")
     fill_blank_sets = relationship("FillBlankSet", cascade="all, delete-orphan")
     filename: Mapped[str] = mapped_column(String(500), nullable=False)
     file_type: Mapped[str] = mapped_column(String(50), nullable=False)

@@ -21,9 +21,9 @@ MOCK_CARDS = [
     {"question": "Q1", "answer": "A1"},
     {"question": "Q2", "answer": "A2"},
 ]
-MOCK_QUIZ = [
-    {"question": "2 + 2?", "options": ["3", "4"], "correct_answer": "4", "explanation": None},
-    {"question": "3 + 3?", "options": ["6", "7"], "correct_answer": "6", "explanation": None},
+MOCK_BLANKS = [
+    {"sentence": "2 + 2 = ____", "answer": "4", "accepted_answers": ["four"], "hint": None},
+    {"sentence": "3 + 3 = ____", "answer": "6", "accepted_answers": [], "hint": None},
 ]
 
 
@@ -116,21 +116,21 @@ def test_study_actions_log_activity(user):
     card_id = client.get(f"/flashcards/{set_id}").json()["cards"][0]["id"]
     client.post(f"/flashcards/{card_id}/review", json={"difficulty": "good"})
 
-    with patch("backend.routers.study_tools.generate_quiz", return_value=MOCK_QUIZ):
-        quiz_id = client.post("/tools/quiz", json={"document_id": doc.id}).json()["quiz_id"]
-    q_ids = [q["id"] for q in client.get(f"/quizzes/{quiz_id}").json()["questions"]]
-    attempt = client.post(f"/quizzes/{quiz_id}/submit", json={"answers": [
-        {"question_id": q_ids[0], "selected_answer": "4"},
+    with patch("backend.routers.study_tools.generate_fill_blanks", return_value=MOCK_BLANKS):
+        blanks_id = client.post("/tools/fill-blanks", json={"document_id": doc.id}).json()["fill_blank_set_id"]
+    q_ids = [q["id"] for q in client.get(f"/fill-blanks/{blanks_id}").json()["questions"]]
+    attempt = client.post(f"/fill-blanks/{blanks_id}/submit", json={"answers": [
+        {"question_id": q_ids[0], "answer": "four"},
     ]}).json()
 
     events = activities(user)
     assert [e.activity_type for e in events] == [
-        "flashcards_generated", "flashcard_reviewed", "quiz_generated", "quiz_submitted",
+        "flashcards_generated", "flashcard_reviewed", "fill_blanks_generated", "fill_blanks_submitted",
     ]
     assert events[0].metadata_data == {"document_id": doc.id, "number_of_cards": 2}
     assert events[1].related_entity_id == card_id
     assert events[1].metadata_data["rating"] == "good"
-    assert events[3].related_entity_id == quiz_id
+    assert events[3].related_entity_id == blanks_id
     assert events[3].metadata_data == {
         "attempt_id": attempt["attempt_id"], "score": 1, "total": 2, "percentage": 50.0,
     }
@@ -138,14 +138,14 @@ def test_study_actions_log_activity(user):
 
 def test_rejected_actions_log_nothing(user):
     doc = make_document(user)
-    with patch("backend.routers.study_tools.generate_quiz", return_value=MOCK_QUIZ):
-        quiz_id = client.post("/tools/quiz", json={"document_id": doc.id}).json()["quiz_id"]
-    q_id = client.get(f"/quizzes/{quiz_id}").json()["questions"][0]["id"]
+    with patch("backend.routers.study_tools.generate_fill_blanks", return_value=MOCK_BLANKS):
+        blanks_id = client.post("/tools/fill-blanks", json={"document_id": doc.id}).json()["fill_blank_set_id"]
+    q_id = client.get(f"/fill-blanks/{blanks_id}").json()["questions"][0]["id"]
     before = len(activities(user))
 
     # Duplicate answers -> 422; AI failure while generating flashcards -> 502
-    client.post(f"/quizzes/{quiz_id}/submit", json={"answers": [
-        {"question_id": q_id, "selected_answer": "4"}, {"question_id": q_id, "selected_answer": "3"},
+    client.post(f"/fill-blanks/{blanks_id}/submit", json={"answers": [
+        {"question_id": q_id, "answer": "4"}, {"question_id": q_id, "answer": "3"},
     ]})
     with patch("backend.routers.study_tools.generate_flashcards", side_effect=AIServiceError("down")):
         client.post("/tools/flashcards", json={"document_id": doc.id})
@@ -196,7 +196,8 @@ def test_stats_for_new_user_are_zero(user):
     assert stats["documents"] == 0
     assert stats["flashcards"] == 0
     assert stats["cards_due_now"] == 0
-    assert stats["average_quiz_percentage"] is None
+    assert stats["average_fill_blank_percentage"] is None
+    assert "quizzes" not in stats
     assert stats["current_streak_days"] == 0
     assert len(stats["daily_activity"]) == 14
     assert all(d["count"] == 0 for d in stats["daily_activity"])
@@ -209,13 +210,13 @@ def test_stats_counts_and_averages(user):
     card_id = client.get(f"/flashcards/{set_id}").json()["cards"][0]["id"]
     client.post(f"/flashcards/{card_id}/review", json={"difficulty": "again"})  # due in 10 min
 
-    with patch("backend.routers.study_tools.generate_quiz", return_value=MOCK_QUIZ):
-        quiz_id = client.post("/tools/quiz", json={"document_id": doc.id}).json()["quiz_id"]
-    q_ids = [q["id"] for q in client.get(f"/quizzes/{quiz_id}").json()["questions"]]
-    client.post(f"/quizzes/{quiz_id}/submit", json={"answers": [
-        {"question_id": q_ids[0], "selected_answer": "4"}, {"question_id": q_ids[1], "selected_answer": "6"},
+    with patch("backend.routers.study_tools.generate_fill_blanks", return_value=MOCK_BLANKS):
+        blanks_id = client.post("/tools/fill-blanks", json={"document_id": doc.id}).json()["fill_blank_set_id"]
+    q_ids = [q["id"] for q in client.get(f"/fill-blanks/{blanks_id}").json()["questions"]]
+    client.post(f"/fill-blanks/{blanks_id}/submit", json={"answers": [
+        {"question_id": q_ids[0], "answer": "4"}, {"question_id": q_ids[1], "answer": "6"},
     ]})  # 100%
-    client.post(f"/quizzes/{quiz_id}/submit", json={"answers": []})  # 0%
+    client.post(f"/fill-blanks/{blanks_id}/submit", json={"answers": []})  # 0%
 
     stats = client.get("/stats").json()
     assert stats["documents"] == 1
@@ -224,10 +225,10 @@ def test_stats_counts_and_averages(user):
     assert stats["flashcards_never_reviewed"] == 1
     assert stats["cards_due_now"] == 0  # the reviewed card is due in 10 minutes
     assert stats["reviews_last_7_days"] == 1
-    assert stats["quizzes"] == 1
-    assert stats["quiz_attempts"] == 2
-    assert stats["average_quiz_percentage"] == 50.0
-    # flashcards_generated, flashcard_reviewed, quiz_generated, 2 x quiz_submitted
+    assert stats["fill_blank_sets"] == 1
+    assert stats["fill_blank_attempts"] == 2
+    assert stats["average_fill_blank_percentage"] == 50.0
+    # flashcards_generated, flashcard_reviewed, fill_blanks_generated, 2 x fill_blanks_submitted
     assert stats["daily_activity"][-1] == {"date": datetime.utcnow().date().isoformat(), "count": 5}
     assert stats["current_streak_days"] == 1
 

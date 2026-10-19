@@ -7,8 +7,6 @@ DOCUMENT_UPLOADED = "document_uploaded"
 CHAT_MESSAGE = "chat_message"
 FLASHCARDS_GENERATED = "flashcards_generated"
 FLASHCARD_REVIEWED = "flashcard_reviewed"
-QUIZ_GENERATED = "quiz_generated"
-QUIZ_SUBMITTED = "quiz_submitted"
 FILL_BLANKS_GENERATED = "fill_blanks_generated"
 FILL_BLANKS_SUBMITTED = "fill_blanks_submitted"
 
