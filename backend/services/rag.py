@@ -2,11 +2,13 @@ import json
 import logging
 import os
 import re
+import time
 from typing import List
 
 import chromadb
 from dotenv import load_dotenv
 from google import genai
+from google.genai import errors as genai_errors
 from google.genai import types
 
 load_dotenv()
@@ -39,10 +41,36 @@ class AIServiceError(Exception):
     """
 
 
+GEMINI_ATTEMPTS = 3
+GEMINI_RETRY_BASE_SECONDS = 1.0  # waits 1s, then 2s
+
+
+def _is_transient(error: Exception) -> bool:
+    """Overloaded (5xx) or rate-limited (429) responses are worth retrying."""
+    return isinstance(error, genai_errors.ServerError) or (
+        isinstance(error, genai_errors.APIError) and error.code == 429
+    )
+
+
+def _call_gemini(fn, **kwargs):
+    """Calls a Gemini SDK method, retrying transient errors with backoff."""
+    for attempt in range(1, GEMINI_ATTEMPTS + 1):
+        try:
+            return fn(**kwargs)
+        except Exception as e:
+            if attempt == GEMINI_ATTEMPTS or not _is_transient(e):
+                raise
+            delay = GEMINI_RETRY_BASE_SECONDS * 2 ** (attempt - 1)
+            logger.warning("Gemini call failed (%s), retrying in %.0fs (attempt %d/%d)",
+                           getattr(e, "code", type(e).__name__), delay, attempt, GEMINI_ATTEMPTS)
+            time.sleep(delay)
+
+
 def get_embedding(text: str) -> List[float]:
     """Generate an embedding for the given text using Gemini."""
     try:
-        result = client.models.embed_content(
+        result = _call_gemini(
+            client.models.embed_content,
             model=EMBEDDING_MODEL,
             contents=text,
             config=types.EmbedContentConfig(
@@ -101,7 +129,8 @@ def delete_document_chunks_from_vector_store(document_id: int):
 def get_query_embedding(query: str) -> List[float]:
     """Generate an embedding for a search query using Gemini."""
     try:
-        result = client.models.embed_content(
+        result = _call_gemini(
+            client.models.embed_content,
             model=EMBEDDING_MODEL,
             contents=query,
             config=types.EmbedContentConfig(
@@ -202,7 +231,8 @@ Question:
 Answer:"""
 
     try:
-        response = client.models.generate_content(
+        response = _call_gemini(
+            client.models.generate_content,
             model=GENERATION_MODEL,
             contents=prompt
         )
@@ -221,7 +251,8 @@ def _generate_json(prompt: str) -> list:
     (e.g. {"questions": [...]}). Raises AIServiceError otherwise.
     """
     try:
-        response = client.models.generate_content(
+        response = _call_gemini(
+            client.models.generate_content,
             model=GENERATION_MODEL,
             contents=prompt,
             config=types.GenerateContentConfig(

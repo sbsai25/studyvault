@@ -77,6 +77,52 @@ def test_api_failure_raises_ai_service_error():
             generate_quiz("context")
 
 
+# --- Retrying transient Gemini errors ---------------------------------------
+
+from google.genai import errors as genai_errors
+
+OVERLOADED = genai_errors.ServerError(503, {"error": {"code": 503, "message": "high demand", "status": "UNAVAILABLE"}})
+RATE_LIMITED = genai_errors.ClientError(429, {"error": {"code": 429, "message": "slow down", "status": "RESOURCE_EXHAUSTED"}})
+BAD_KEY = genai_errors.ClientError(400, {"error": {"code": 400, "message": "API key not valid", "status": "INVALID_ARGUMENT"}})
+GOOD_RESPONSE = SimpleNamespace(text=json.dumps([{"question": "Q", "answer": "A"}]))
+
+
+@patch("backend.services.rag.time.sleep")
+def test_transient_errors_are_retried_with_backoff(mock_sleep):
+    with patch(
+        "backend.services.rag.client.models.generate_content",
+        side_effect=[OVERLOADED, RATE_LIMITED, GOOD_RESPONSE],
+    ) as mock_gen:
+        cards = generate_flashcards("context")
+
+    assert cards == [{"question": "Q", "answer": "A"}]
+    assert mock_gen.call_count == 3
+    assert [c.args[0] for c in mock_sleep.call_args_list] == [1.0, 2.0]
+
+
+@patch("backend.services.rag.time.sleep")
+def test_gives_up_after_three_attempts(mock_sleep):
+    with patch(
+        "backend.services.rag.client.models.generate_content",
+        side_effect=[OVERLOADED, OVERLOADED, OVERLOADED, GOOD_RESPONSE],
+    ) as mock_gen:
+        with pytest.raises(AIServiceError):
+            generate_flashcards("context")
+    assert mock_gen.call_count == 3
+
+
+@patch("backend.services.rag.time.sleep")
+def test_non_transient_errors_are_not_retried(mock_sleep):
+    with patch(
+        "backend.services.rag.client.models.generate_content",
+        side_effect=[BAD_KEY, GOOD_RESPONSE],
+    ) as mock_gen:
+        with pytest.raises(AIServiceError):
+            generate_flashcards("context")
+    assert mock_gen.call_count == 1
+    mock_sleep.assert_not_called()
+
+
 # --- Whole-document context -------------------------------------------------
 
 def test_document_context_empty_document():
