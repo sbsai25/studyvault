@@ -17,7 +17,9 @@ from backend.services.rag import add_chunks_to_vector_store, delete_document_chu
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads")
+UPLOAD_DIR = os.getenv("UPLOAD_DIR") or os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads"
+)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.post("/upload")

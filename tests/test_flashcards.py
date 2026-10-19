@@ -22,6 +22,9 @@ MOCK_CARDS = [
 
 def setup_test_users_and_docs():
     db = next(get_db())
+    # The returned objects outlive this session, so keep their loaded
+    # attributes instead of expiring them on each commit.
+    db.expire_on_commit = False
 
     user_a = db.query(User).filter(User.email == "test_a_flashcards@example.com").first()
     if not user_a:

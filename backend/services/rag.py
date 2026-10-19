@@ -13,7 +13,7 @@ load_dotenv()
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 # Initialize ChromaDB
-CHROMA_PATH = os.path.join(
+CHROMA_PATH = os.getenv("CHROMA_PATH") or os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
     ".chroma"
 )
