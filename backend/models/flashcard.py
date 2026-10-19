@@ -34,7 +34,7 @@ class FlashcardSet(Base):
     flashcards = relationship("Flashcard", back_populates="flashcard_set", cascade="all, delete-orphan")
 
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 
 class Flashcard(Base):
     __tablename__ = "flashcards"
@@ -78,5 +78,9 @@ class FlashcardProgress(Base):
     last_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     difficulty: Mapped[str | None] = mapped_column(String(50), nullable=True)
     next_review_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Spaced-repetition state (modified SM-2, see routers/flashcards.py)
+    ease_factor: Mapped[float] = mapped_column(Float, default=2.5, server_default="2.5", nullable=False)
+    interval_days: Mapped[float] = mapped_column(Float, default=0.0, server_default="0", nullable=False)
+    repetitions: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
 
     flashcard = relationship("Flashcard", back_populates="progresses")

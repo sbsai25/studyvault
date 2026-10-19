@@ -13,6 +13,9 @@ ADDED_COLUMNS = [
     ("conversations", "updated_at", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"),
     ("users", "is_active", "BOOLEAN NOT NULL DEFAULT TRUE"),
     ("messages", "sources", "JSON"),
+    ("flashcard_progress", "ease_factor", "DOUBLE PRECISION NOT NULL DEFAULT 2.5"),
+    ("flashcard_progress", "interval_days", "DOUBLE PRECISION NOT NULL DEFAULT 0"),
+    ("flashcard_progress", "repetitions", "INTEGER NOT NULL DEFAULT 0"),
 ]
 
 

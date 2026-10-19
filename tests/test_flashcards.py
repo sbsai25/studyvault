@@ -196,10 +196,14 @@ def test_review_creates_progress():
     assert body["review_count"] == 1
     assert body["difficulty"] == "good"
 
+    assert body["repetitions"] == 1
+    assert body["interval_days"] == 1.0
+
     db = next(get_db())
     progress = db.query(FlashcardProgress).filter(FlashcardProgress.flashcard_id == card_id).first()
     assert progress is not None
-    expected = datetime.utcnow() + timedelta(days=3)
+    # First successful review is scheduled 1 day out (SM-2)
+    expected = datetime.utcnow() + timedelta(days=1)
     assert abs((progress.next_review_at - expected).total_seconds()) < 30
 
 
@@ -215,9 +219,13 @@ def test_review_updates_existing_progress():
     assert body["review_count"] == 2
     assert body["difficulty"] == "easy"
 
+    # "again" reset the repetitions, so "easy" is the first successful review
+    assert body["repetitions"] == 1
+    assert body["ease_factor"] == 2.06  # 2.5 - 0.54 (again) + 0.1 (easy)
+
     db = next(get_db())
     progress = db.query(FlashcardProgress).filter(FlashcardProgress.flashcard_id == card_id).first()
-    expected = datetime.utcnow() + timedelta(days=7)
+    expected = datetime.utcnow() + timedelta(days=1)
     assert abs((progress.next_review_at - expected).total_seconds()) < 30
 
 
@@ -282,3 +290,99 @@ def test_delete_flashcard_set_cascades():
     assert db.query(FlashcardSet).filter(FlashcardSet.id == set_id).first() is None
     assert db.query(Flashcard).filter(Flashcard.flashcard_set_id == set_id).count() == 0
     assert db.query(FlashcardProgress).filter(FlashcardProgress.flashcard_id == card_id).first() is None
+
+
+# --- SM-2 scheduling (pure function, fixed clock) ---------------------------
+
+from backend.routers.flashcards import schedule_review
+
+NOW = datetime(2026, 1, 1, 12, 0, 0)
+
+
+def run_sequence(ratings, ease=2.5, interval=0.0, reps=0):
+    steps = []
+    for rating in ratings:
+        s = schedule_review(ease, interval, reps, rating, NOW)
+        ease, interval, reps = s.ease_factor, s.interval_days, s.repetitions
+        steps.append(s)
+    return steps
+
+
+def test_sm2_good_good_good():
+    steps = run_sequence(["good", "good", "good"])
+    assert [s.interval_days for s in steps] == [1.0, 6.0, 15.0]  # 6 x 2.5
+    assert [s.repetitions for s in steps] == [1, 2, 3]
+    assert [s.ease_factor for s in steps] == [2.5, 2.5, 2.5]  # good leaves EF unchanged
+    assert steps[2].next_review_at == NOW + timedelta(days=15)
+
+
+def test_sm2_hard_good_easy():
+    steps = run_sequence(["hard", "good", "easy"])
+    assert [s.interval_days for s in steps] == [1.0, 6.0, 18.41]  # 6 x 2.36 x 1.3, EF before update
+    assert [s.ease_factor for s in steps] == [2.36, 2.36, 2.46]
+
+
+def test_sm2_hard_multiplier_after_second_review():
+    steps = run_sequence(["good", "good", "hard"])
+    assert steps[2].interval_days == 12.0  # 6 x 2.5 x 0.8
+    assert steps[2].ease_factor == 2.36
+
+
+def test_sm2_again_then_good():
+    again, good = run_sequence(["again", "good"])
+    assert again.repetitions == 0
+    assert again.interval_days == 0.0
+    assert again.next_review_at == NOW + timedelta(minutes=10)
+    assert again.ease_factor == 1.96  # 2.5 - 0.54
+    assert good.repetitions == 1
+    assert good.interval_days == 1.0
+    assert good.ease_factor == 1.96
+
+
+def test_sm2_again_resets_a_mature_card():
+    steps = run_sequence(["good", "good", "good", "again", "good"])
+    assert steps[3].repetitions == 0
+    assert steps[3].next_review_at == NOW + timedelta(minutes=10)
+    assert steps[4].interval_days == 1.0  # starts over
+
+
+def test_sm2_repeated_again_hits_ease_floor():
+    steps = run_sequence(["again"] * 4)
+    assert [s.ease_factor for s in steps] == [1.96, 1.42, 1.3, 1.3]
+    assert all(s.repetitions == 0 for s in steps)
+    assert all(s.next_review_at == NOW + timedelta(minutes=10) for s in steps)
+
+
+def test_sm2_ease_never_below_minimum():
+    s = schedule_review(1.3, 6.0, 2, "hard", NOW)
+    assert s.interval_days == 6.24  # 6 x 1.3 x 0.8
+    assert s.ease_factor == 1.3
+
+
+# --- Per-deck due cards -----------------------------------------------------
+
+def test_deck_due_includes_new_and_overdue_cards_only():
+    data = create_flashcard_set()
+    set_id = data["flashcard_set_id"]
+    cards = as_user_a().get(f"/flashcards/{set_id}").json()["cards"]
+    new_card, reviewed_card, overdue_card = (c["id"] for c in cards)
+
+    as_user_a().post(f"/flashcards/{reviewed_card}/review", json={"difficulty": "good"})  # due tomorrow
+    as_user_a().post(f"/flashcards/{overdue_card}/review", json={"difficulty": "good"})
+    db = next(get_db())
+    progress = db.query(FlashcardProgress).filter(FlashcardProgress.flashcard_id == overdue_card).first()
+    progress.next_review_at = datetime.utcnow() - timedelta(hours=1)
+    db.commit()
+
+    res = as_user_a().get(f"/flashcards/{set_id}/due")
+    assert res.status_code == 200
+    due = res.json()["cards"]
+    assert [c["id"] for c in due] == [new_card, overdue_card]  # never-reviewed first
+    assert due[0]["progress"] is None
+    assert due[1]["progress"]["repetitions"] == 1
+
+
+def test_deck_due_not_owned():
+    data = create_flashcard_set()
+    res = as_user_b().get(f"/flashcards/{data['flashcard_set_id']}/due")
+    assert res.status_code == 404
