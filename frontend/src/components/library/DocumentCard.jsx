@@ -19,12 +19,10 @@ function DocumentCard({ document, onDelete, deleting = false, actions }) {
             {displayName(document.filename)}
           </h3>
           <p className={styles.meta}>
-            <span>{fileTypeLabel(document.file_type)}</span>
-            <span aria-hidden="true">·</span>
-            <span>
-              {passages} passage{passages === 1 ? '' : 's'}
-            </span>
-            <span aria-hidden="true">·</span>
+            {fileTypeLabel(document.file_type)} · {passages} passage{passages === 1 ? '' : 's'}
+          </p>
+          <p className={styles.added}>
+            Added{' '}
             <time dateTime={document.created_at} title={formatLongDate(document.created_at)}>
               {formatRelative(document.created_at)}
             </time>

@@ -42,8 +42,11 @@
   flex-shrink: 0;
 }
 
+/* Enough line height that overflow: hidden (for the ellipsis) never clips
+   descenders such as the g and y in "Try again" */
 .label {
   overflow: hidden;
+  line-height: 1.35;
   text-overflow: ellipsis;
 }
 

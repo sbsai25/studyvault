@@ -24,7 +24,8 @@ export function formatRelative(value, now = new Date()) {
   const abs = Math.abs(diff);
   if (abs < 45 * 1000) return diff < 0 ? 'just now' : 'in a moment';
   if (abs < HOUR) return relative.format(Math.round(diff / MINUTE), 'minute');
-  if (abs < DAY) return relative.format(Math.round(diff / HOUR), 'hour');
+  // From 22 hours on, whole days read better ("tomorrow", not "in 24 hours")
+  if (abs < 22 * HOUR) return relative.format(Math.round(diff / HOUR), 'hour');
   if (abs < 7 * DAY) return relative.format(Math.round(diff / DAY), 'day');
   return formatDate(date, now);
 }

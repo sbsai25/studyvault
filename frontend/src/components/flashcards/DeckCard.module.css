@@ -3,8 +3,8 @@
    even while the card itself is transformed. */
 .stack {
   position: relative;
-  height: calc(100% - 10px);
-  margin-bottom: 10px;
+  height: calc(100% - 14px);
+  margin-bottom: 14px;
   isolation: isolate;
 }
 
@@ -13,29 +13,30 @@
   content: '';
   position: absolute;
   inset: 0;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
   transition: transform var(--duration-base) var(--ease-out);
 }
 
 .stack::before {
   z-index: -1;
-  transform: translateY(5px) scale(0.97);
+  transform: translateY(7px) scale(0.96);
 }
 
 .stack::after {
   z-index: -2;
-  background: var(--color-surface-2);
-  transform: translateY(10px) scale(0.94);
+  background: var(--color-surface-sunken);
+  transform: translateY(14px) scale(0.92);
 }
 
 .stack:hover::before {
-  transform: translateY(7px) scale(0.97);
+  transform: translateY(9px) scale(0.96);
 }
 
 .stack:hover::after {
-  transform: translateY(13px) scale(0.94);
+  transform: translateY(17px) scale(0.92);
 }
 
 .deck {

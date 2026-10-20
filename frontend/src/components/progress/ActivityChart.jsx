@@ -38,7 +38,9 @@ function ActivityChart({ days, variant = 'compact', title = 'Activity over the l
   const labelIndexes = new Set([0, 1, 2, 3].map((k) => Math.round((k * lastIndex) / 3)));
   const activeDay = active == null ? null : days[active];
 
-  const dayLabel = (index) => (index === lastIndex ? 'Today' : formatDay(days[index].date, { month: 'short', day: 'numeric' }));
+  // The API's days are UTC dates, so the newest one isn't always the
+  // viewer's local "today"; label every day by its date
+  const dayLabel = (index) => formatDay(days[index].date, { month: 'short', day: 'numeric' });
 
   const onKeyDown = (event) => {
     const moves = {
@@ -65,12 +67,9 @@ function ActivityChart({ days, variant = 'compact', title = 'Activity over the l
         </tr>
       </thead>
       <tbody>
-        {days.map((day, index) => (
+        {days.map((day) => (
           <tr key={day.date}>
-            <td>
-              {formatDay(day.date, { weekday: 'short', month: 'short', day: 'numeric' })}
-              {index === lastIndex ? ' (today)' : ''}
-            </td>
+            <td>{formatDay(day.date, { weekday: 'short', month: 'short', day: 'numeric' })}</td>
             <td className={styles.numeric}>{day.count}</td>
           </tr>
         ))}
@@ -149,10 +148,7 @@ function ActivityChart({ days, variant = 'compact', title = 'Activity over the l
                   role="status"
                 >
                   <strong>{activities(activeDay.count)}</strong>
-                  <span>
-                    {formatDay(activeDay.date, { weekday: 'short', month: 'short', day: 'numeric' })}
-                    {active === lastIndex ? ' · today' : ''}
-                  </span>
+                  <span>{formatDay(activeDay.date, { weekday: 'short', month: 'short', day: 'numeric' })} (UTC)</span>
                 </div>
               )}
             </div>

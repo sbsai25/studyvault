@@ -149,13 +149,16 @@ function Progress() {
             )}
           </StatTile>
           <StatTile
-            label="Fill-in-the-blank average"
+            label="Exercise average"
             icon={Target}
             tone="warm"
-            value={average == null ? null : Math.round(average)}
-            unit="%"
+            value={average == null ? null : `${Math.round(average)}%`}
             empty="No attempts yet"
-            detail={data.fill_blank_attempts > 0 ? `Across ${plural(data.fill_blank_attempts, 'attempt')}` : null}
+            detail={
+              data.fill_blank_attempts > 0
+                ? `Fill in the blanks, across ${plural(data.fill_blank_attempts, 'attempt')}`
+                : 'Fill in the blanks'
+            }
           />
         </m.div>
 
