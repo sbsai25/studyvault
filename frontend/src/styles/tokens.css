@@ -35,6 +35,7 @@
   --color-primary-tint: #f0eefd;
   --color-primary-tint-2: #e4e0fb;
   --color-primary-ring: rgb(109 92 232 / 0.32);
+  --color-primary-wash: rgb(109 92 232 / 0.08);
 
   /* Status. The base colours are for icons and fills, the -text colours for text. */
   --color-success: #3b9277;

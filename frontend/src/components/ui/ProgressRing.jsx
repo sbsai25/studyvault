@@ -3,16 +3,18 @@ import { cx } from '../../lib/cx';
 import { useMotionPreference } from '../../motion/motionPreference';
 import styles from './ProgressRing.module.css';
 
+// Arc colour and, for the unfilled track, a lighter step of the same hue
 const TONES = {
-  primary: 'var(--color-primary)',
-  success: 'var(--color-success)',
-  warm: 'var(--color-warm)',
+  primary: { arc: 'var(--color-primary)', track: 'var(--color-primary-tint-2)' },
+  success: { arc: 'var(--color-success)', track: 'var(--color-success-tint)' },
+  warm: { arc: 'var(--color-warm)', track: 'var(--color-warm-tint)' },
 };
 
 // A circular progress indicator for a real fraction (0-1). The arc draws in
 // once on mount. `label` is the accessible description, e.g. "8 of 10 correct".
 function ProgressRing({ value, size = 96, stroke = 8, tone = 'primary', label, className, children }) {
   const { reduced } = useMotionPreference();
+  const colors = TONES[tone] ?? TONES.primary;
   const fraction = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
   const radius = (size - stroke) / 2;
   const center = size / 2;
@@ -30,7 +32,7 @@ function ProgressRing({ value, size = 96, stroke = 8, tone = 'primary', label, c
           cy={center}
           r={radius}
           fill="none"
-          stroke="var(--color-surface-sunken)"
+          stroke={colors.track}
           strokeWidth={stroke}
         />
         {fraction > 0 && (
@@ -39,7 +41,7 @@ function ProgressRing({ value, size = 96, stroke = 8, tone = 'primary', label, c
             cy={center}
             r={radius}
             fill="none"
-            stroke={TONES[tone] ?? TONES.primary}
+            stroke={colors.arc}
             strokeWidth={stroke}
             strokeLinecap="round"
             transform={`rotate(-90 ${center} ${center})`}

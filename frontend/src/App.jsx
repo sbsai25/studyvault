@@ -14,7 +14,7 @@ const Register = lazy(() => import('./pages/Register'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const Library = lazy(() => import('./pages/Library'));
 const Chat = lazy(() => import('./pages/Chat'));
-const Dashboard = lazy(() => import('./components/Dashboard'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
 const FlashcardDecksList = lazy(() => import('./components/flashcards/FlashcardDecksList'));
 const FlashcardStudyMode = lazy(() => import('./components/flashcards/FlashcardStudyMode'));
 const FlashcardGenerationSuccess = lazy(() => import('./components/flashcards/FlashcardGenerationSuccess'));

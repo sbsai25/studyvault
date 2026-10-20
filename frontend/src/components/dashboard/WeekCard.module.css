@@ -1,0 +1,72 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+  height: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.heading {
+  font-size: var(--text-md);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.stat dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.stat dd {
+  margin: 0;
+}
+
+.flame {
+  color: var(--color-warm);
+}
+
+.repeat {
+  color: var(--color-primary);
+}
+
+.value {
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  line-height: 1.15;
+}
+
+.unit {
+  margin-left: 6px;
+  color: var(--color-text-2);
+  font-weight: var(--weight-medium);
+}
+
+.detail {
+  color: var(--color-text-3);
+  font-size: var(--text-xs);
+}
+
+.chart {
+  margin-top: auto;
+}
+
+.chartLabel {
+  margin-bottom: var(--space-1);
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}

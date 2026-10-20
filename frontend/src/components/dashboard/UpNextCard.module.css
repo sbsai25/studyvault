@@ -1,0 +1,132 @@
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(circle at 100% 0%, rgb(109 92 232 / 0.1), transparent 55%),
+    var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: var(--space-4);
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--gradient-primary);
+  box-shadow: var(--shadow-primary);
+  color: var(--color-text-inverse);
+}
+
+.eyebrow {
+  color: var(--color-primary-text);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.title {
+  margin-top: 6px;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+}
+
+.description {
+  max-width: 520px;
+  margin-top: var(--space-1);
+  color: var(--color-text-2);
+}
+
+.decks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-width: 420px;
+  margin-top: var(--space-2);
+  list-style: none;
+}
+
+.decks li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-1-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.deckName {
+  overflow: hidden;
+  font-weight: var(--weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deckCount {
+  flex-shrink: 0;
+  color: var(--color-warm-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+}
+
+.continueLink {
+  justify-content: flex-start;
+  width: 100%;
+  height: auto;
+  min-height: 52px;
+  padding: var(--space-1-5) var(--space-4);
+  border-top: 1px solid var(--color-border);
+  border-radius: 0;
+  color: var(--color-text);
+}
+
+.continueLink:active:not(:disabled) {
+  transform: none;
+}
+
+.continueText {
+  overflow: hidden;
+  font-weight: var(--weight-medium);
+  text-overflow: ellipsis;
+}
+
+.continueTime {
+  color: var(--color-text-3);
+  font-weight: var(--weight-regular);
+}
+
+@media (max-width: 639px) {
+  .main {
+    padding: var(--space-3);
+  }
+
+  .continueLink {
+    padding: var(--space-1-5) var(--space-3);
+  }
+}

@@ -1,0 +1,186 @@
+/* Column chart, one series: primary purple columns (4.83:1 on the surface),
+   <= 24px wide, 4px rounded tops, square at a hairline baseline. */
+
+.figure {
+  margin: 0;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: -6px 0 var(--space-1);
+}
+
+.chart {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.plot {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  gap: 2px;
+  border-bottom: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+  outline-offset: 4px;
+}
+
+.compact .plot {
+  height: 64px;
+}
+
+.full .plot {
+  height: 200px;
+}
+
+.slot {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  justify-content: center;
+  height: 100%;
+  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.activeSlot {
+  background: var(--color-primary-wash);
+}
+
+.bar {
+  width: min(24px, 64%);
+  min-height: 3px;
+  border-radius: 4px 4px 0 0;
+  background: var(--color-primary);
+  transform-origin: bottom;
+  animation: grow 0.5s var(--ease-out) both;
+  animation-delay: calc(var(--index) * 18ms + 80ms);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.activeSlot .bar {
+  background: var(--color-primary-active);
+}
+
+@keyframes grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.gridline {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: var(--color-border);
+  pointer-events: none;
+}
+
+.yAxis {
+  position: relative;
+  width: 24px;
+  height: 200px;
+  color: var(--color-text-3);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.yAxis span {
+  position: absolute;
+  right: 0;
+  transform: translateY(50%);
+}
+
+.xAxis {
+  display: flex;
+  gap: 2px;
+  margin: 6px 0 0 calc(24px + var(--space-1));
+  color: var(--color-text-3);
+  font-size: var(--text-xs);
+}
+
+.xAxis span {
+  flex: 1;
+  min-width: 0;
+  overflow: visible;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.full .tooltip {
+  bottom: auto;
+  top: 8px;
+}
+
+.alignStart {
+  transform: translateX(-12px);
+}
+
+.alignEnd {
+  transform: translateX(calc(-100% + 12px));
+}
+
+.tooltip strong {
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+
+.tooltip span {
+  color: var(--color-text-2);
+}
+
+.caption {
+  margin-top: var(--space-1-5);
+  color: var(--color-text-3);
+  font-size: var(--text-sm);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.table th,
+.table td {
+  padding: 6px var(--space-1);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.table th {
+  color: var(--color-text-2);
+  font-weight: var(--weight-semibold);
+}
+
+.table .numeric,
+.table th:last-child {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
