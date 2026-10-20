@@ -19,12 +19,6 @@ ADDED_COLUMNS = [
 ]
 
 
-# Features that were removed. Their tables and activity records are deleted.
-# The quiz feature was removed on 2026-10-19.
-REMOVED_TABLES = ["quiz_answers", "quiz_attempts", "quiz_questions", "quizzes"]
-REMOVED_ACTIVITY_TYPES = ["quiz_generated", "quiz_submitted"]
-
-
 def _column_exists(conn, table: str, column: str) -> bool:
     result = conn.execute(
         text("""
@@ -57,23 +51,6 @@ def safe_migrate():
             except Exception as e:
                 conn.rollback()
                 print(f"Warning during ALTER TABLE {table}: {e}")
-
-        # Remove data of deleted features (listed together so Postgres
-        # handles the foreign keys between them)
-        existing = [
-            t for t in REMOVED_TABLES
-            if conn.execute(text("SELECT to_regclass(:t)"), {"t": t}).scalar() is not None
-        ]
-        if existing:
-            print(f"Dropping removed tables: {', '.join(existing)}...")
-            conn.execute(text(f"DROP TABLE IF EXISTS {', '.join(existing)};"))
-        deleted = conn.execute(
-            text("DELETE FROM activities WHERE activity_type = ANY(:types)"),
-            {"types": REMOVED_ACTIVITY_TYPES},
-        ).rowcount
-        if deleted:
-            print(f"Deleted {deleted} activity records of removed features.")
-        conn.commit()
 
     print("[OK] Safe migration completed successfully!")
 

@@ -30,6 +30,12 @@ if not (_parsed.database or "").endswith("_test") or _parsed.host not in _ALLOWE
         f"host={_parsed.host!r})."
     )
 
+if os.getenv("ALLOW_TEST_DB_RESET") != "1":
+    raise RuntimeError(
+        "Refusing to run tests: the suite drops and recreates every table in "
+        f"{_parsed.database!r}. Set ALLOW_TEST_DB_RESET=1 to confirm."
+    )
+
 os.environ["DATABASE_URL"] = _test_url
 os.environ["CHROMA_PATH"] = tempfile.mkdtemp(prefix="studyvault_chroma_")
 os.environ["UPLOAD_DIR"] = tempfile.mkdtemp(prefix="studyvault_uploads_")

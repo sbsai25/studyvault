@@ -286,6 +286,7 @@ cp .env.example .env
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | No | Access token lifetime (default `30`) |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | No | Refresh token lifetime (default `7`) |
 | `TEST_DATABASE_URL` | For tests | Separate database for pytest. Its name must end in `_test` and it must be on `localhost`, `127.0.0.1`, or the Docker `db` host. **The test suite drops and recreates every table in it.** |
+| `ALLOW_TEST_DB_RESET` | For tests | Must be `1`, or pytest refuses to start. A deliberate opt-in before the test database is reset. |
 | `GEMINI_MODEL` | No | Gemini model for answers, titles, and study material (default `gemini-3.5-flash-lite`). Each model has its own free-tier quota, so switching models is a quick fix when one runs out. |
 | `CORS_ORIGINS` | No | Comma-separated allowed frontend origins (default `http://localhost:5173`) |
 | `MAX_UPLOAD_MB` | No | Maximum upload size in megabytes (default `20`) |
@@ -314,7 +315,7 @@ npm run dev
 
 The frontend expects the API at `http://127.0.0.1:8000`, and the backend allows CORS from `http://localhost:5173` by default.
 
-**Upgrading an existing database:** run `python -m backend.migrate_db`. It creates missing tables and adds newer columns (for example `messages.sources` and the spaced-repetition columns on `flashcard_progress`), and it is safe to run more than once. It also deletes data from removed features: the quiz tables (`quizzes`, `quiz_questions`, `quiz_attempts`, `quiz_answers`) and quiz activity records are dropped, since the quiz feature was removed. Everything else is left as it is. Existing flashcard progress starts the new schedule from scratch at its next review.
+**Upgrading an existing database:** run `python -m backend.migrate_db`. It creates missing tables and adds newer columns (for example `messages.sources` and the spaced-repetition columns on `flashcard_progress`), and it is safe to run more than once. It never drops tables or deletes rows. Existing flashcard progress starts the new schedule from scratch at its next review.
 
 ### Running tests
 
@@ -323,11 +324,12 @@ The frontend expects the API at `http://127.0.0.1:8000`, and the backend allows 
 psql -U postgres -c "CREATE DATABASE studyvault_test;"
 # and set TEST_DATABASE_URL in .env, e.g.
 # TEST_DATABASE_URL=postgresql+psycopg://USER:PASSWORD@localhost:5432/studyvault_test
+# ALLOW_TEST_DB_RESET=1
 
 python -m pytest
 ```
 
-`tests/conftest.py` switches the app to `TEST_DATABASE_URL` before anything else loads, refuses to run if it doesn't look like a local `*_test` database, and resets its tables at the start of each run. ChromaDB and uploads go to temporary folders. Gemini is mocked everywhere, except one test that runs the document filter against a real temporary ChromaDB with fake embeddings, so the suite needs no API key or network.
+`tests/conftest.py` switches the app to `TEST_DATABASE_URL` before anything else loads, refuses to run if it doesn't look like a local `*_test` database or `ALLOW_TEST_DB_RESET` isn't `1`, and resets its tables at the start of each run. ChromaDB and uploads go to temporary folders. Gemini is mocked everywhere, except one test that runs the document filter against a real temporary ChromaDB with fake embeddings, so the suite needs no API key or network.
 
 ### Running with Docker
 
