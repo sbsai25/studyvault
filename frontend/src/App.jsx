@@ -15,9 +15,9 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 const Library = lazy(() => import('./pages/Library'));
 const Chat = lazy(() => import('./pages/Chat'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
-const FlashcardDecksList = lazy(() => import('./components/flashcards/FlashcardDecksList'));
-const FlashcardStudyMode = lazy(() => import('./components/flashcards/FlashcardStudyMode'));
-const FlashcardGenerationSuccess = lazy(() => import('./components/flashcards/FlashcardGenerationSuccess'));
+const FlashcardDecks = lazy(() => import('./pages/FlashcardDecks'));
+const FlashcardStudy = lazy(() => import('./pages/FlashcardStudy'));
+const FlashcardSuccess = lazy(() => import('./pages/FlashcardSuccess'));
 
 function App() {
   return (
@@ -37,9 +37,9 @@ function App() {
                       <Route path="/library" element={<Library />} />
                       <Route path="/chat" element={<Chat />} />
                       <Route path="/chat/:conversationId" element={<Chat />} />
-                      <Route path="/flashcards" element={<FlashcardDecksList />} />
-                      <Route path="/flashcards/:setId/success" element={<FlashcardGenerationSuccess />} />
-                      <Route path="/flashcards/:setId" element={<FlashcardStudyMode />} />
+                      <Route path="/flashcards" element={<FlashcardDecks />} />
+                      <Route path="/flashcards/:setId/success" element={<FlashcardSuccess />} />
+                      <Route path="/flashcards/:setId" element={<FlashcardStudy />} />
                       <Route path="*" element={<NotFound />} />
                     </Route>
                   </Route>

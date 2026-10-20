@@ -1,0 +1,126 @@
+/* A deck reads as a small stack of cards: two offset layers sit behind it.
+   The layers belong to an isolated wrapper so they stay behind the card
+   even while the card itself is transformed. */
+.stack {
+  position: relative;
+  height: calc(100% - 10px);
+  margin-bottom: 10px;
+  isolation: isolate;
+}
+
+.stack::before,
+.stack::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.stack::before {
+  z-index: -1;
+  transform: translateY(5px) scale(0.97);
+}
+
+.stack::after {
+  z-index: -2;
+  background: var(--color-surface-2);
+  transform: translateY(10px) scale(0.94);
+}
+
+.stack:hover::before {
+  transform: translateY(7px) scale(0.97);
+}
+
+.stack:hover::after {
+  transform: translateY(13px) scale(0.94);
+}
+
+.deck {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.stack:hover .deck {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-2-5) var(--space-2-5) var(--space-1-5);
+}
+
+.topRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-1);
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--color-success-tint);
+  color: var(--color-success-text);
+}
+
+.title {
+  font-size: var(--text-md);
+  line-height: var(--leading-snug);
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  color: var(--color-text-3);
+  font-size: var(--text-sm);
+}
+
+.source {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 2px;
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+}
+
+.source span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source svg {
+  flex-shrink: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1-5) var(--space-2-5) var(--space-2);
+}
+
+.delete {
+  margin-left: auto;
+}

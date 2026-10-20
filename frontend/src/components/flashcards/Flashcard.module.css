@@ -1,0 +1,138 @@
+.scene {
+  width: 100%;
+  perspective: 1600px;
+}
+
+/* Both faces share one grid cell, so the card is as tall as its longer side */
+.card {
+  position: relative;
+  display: grid;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 24px;
+  background: none;
+  color: inherit;
+  text-align: center;
+  transform-style: preserve-3d;
+  transition: transform var(--duration-flip) var(--ease-in-out);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card:focus-visible {
+  outline: none;
+}
+
+.card:focus-visible .face {
+  box-shadow: var(--ring), var(--shadow-md);
+}
+
+.flipped {
+  transform: rotateY(180deg);
+}
+
+.face {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  grid-area: 1 / 1;
+  min-height: 340px;
+  padding: var(--space-6) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: 24px;
+  box-shadow: var(--shadow-md);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition: box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.card:hover .face {
+  box-shadow: var(--shadow-lg);
+}
+
+.front {
+  background:
+    radial-gradient(circle at 0% 0%, rgb(109 92 232 / 0.06), transparent 50%),
+    var(--color-surface);
+}
+
+/* Pre-rotated so its text reads correctly once the card has turned */
+.back {
+  border-color: var(--color-primary-tint-2);
+  background:
+    radial-gradient(circle at 100% 100%, rgb(109 92 232 / 0.12), transparent 55%),
+    var(--color-primary-tint);
+  transform: rotateY(180deg);
+}
+
+.label {
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-2);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.answerLabel {
+  background: var(--color-surface);
+  color: var(--color-primary-text);
+}
+
+.text {
+  max-width: 560px;
+  color: var(--color-text);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+  overflow-wrap: anywhere;
+}
+
+.back .text {
+  font-weight: var(--weight-medium);
+}
+
+.hint {
+  color: var(--color-text-3);
+  font-size: var(--text-sm);
+}
+
+/* Reduced motion: crossfade the faces instead of rotating the card */
+:global(:root[data-motion='reduced']) .card,
+:global(:root[data-motion='reduced']) .flipped {
+  transform: none;
+}
+
+:global(:root[data-motion='reduced']) .face {
+  backface-visibility: visible;
+  -webkit-backface-visibility: visible;
+  transition: opacity var(--duration-base) var(--ease-standard);
+}
+
+:global(:root[data-motion='reduced']) .back {
+  opacity: 0;
+  transform: none;
+}
+
+:global(:root[data-motion='reduced']) .flipped .front {
+  opacity: 0;
+}
+
+:global(:root[data-motion='reduced']) .flipped .back {
+  opacity: 1;
+}
+
+@media (max-width: 639px) {
+  .face {
+    min-height: 280px;
+    padding: var(--space-5) var(--space-3);
+  }
+
+  .text {
+    font-size: var(--text-lg);
+  }
+}

@@ -1,0 +1,33 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+  gap: var(--space-3) var(--space-2);
+  list-style: none;
+}
+
+.dueBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+  padding: var(--space-1-5) var(--space-2);
+  border: 1px solid var(--color-warm-border);
+  border-radius: var(--radius-md);
+  background: var(--color-warm-tint);
+  color: var(--color-warm-text);
+  font-weight: var(--weight-medium);
+}
+
+.dueBanner svg {
+  flex-shrink: 0;
+}
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  padding: var(--space-2-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}

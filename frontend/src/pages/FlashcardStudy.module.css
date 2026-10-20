@@ -1,0 +1,7 @@
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 720px;
+  margin: 0 auto;
+}

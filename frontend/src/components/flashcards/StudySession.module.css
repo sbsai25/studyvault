@@ -1,0 +1,78 @@
+.session {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.progressText {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px var(--space-2);
+}
+
+.position {
+  font-weight: var(--weight-semibold);
+}
+
+.saved {
+  color: var(--color-text-3);
+  font-size: var(--text-sm);
+}
+
+.cardWrap {
+  width: 100%;
+}
+
+.response {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1-5);
+  min-height: 96px;
+}
+
+.prompt {
+  color: var(--color-text-2);
+  font-weight: var(--weight-medium);
+}
+
+.rated {
+  padding: var(--space-1-5) var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-2);
+  text-align: center;
+}
+
+.rated strong {
+  color: var(--color-text);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+}
+
+.shortcuts {
+  color: var(--color-text-3);
+  font-size: var(--text-xs);
+  text-align: center;
+}
+
+@media (max-width: 639px), (pointer: coarse) {
+  .shortcuts {
+    display: none;
+  }
+}

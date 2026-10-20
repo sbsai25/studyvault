@@ -41,9 +41,11 @@
   --color-success: #3b9277;
   --color-success-text: #2c7560;
   --color-success-tint: #e8f4ef;
+  --color-success-border: #b9dccd;
   --color-warm: #e4a54a;
   --color-warm-text: #94600f;
   --color-warm-tint: #fcf3e4;
+  --color-warm-border: #efd3a6;
   --color-danger: #d04a5c;
   --color-danger-text: #b42f44;
   --color-danger-hover: #9e2639;
