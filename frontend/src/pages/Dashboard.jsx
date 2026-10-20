@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { m } from 'motion/react';
-import { Layers, Library, MessagesSquare, Upload } from 'lucide-react';
+import { Layers, MessagesSquare, TextCursorInput, Upload } from 'lucide-react';
 import { getConversations, getDocuments, getDueFlashcards, getFlashcardSets, getStats } from '../api/client';
 import { greetingFor } from '../lib/dates';
 import { getErrorMessage } from '../lib/errors';
@@ -117,10 +117,12 @@ function Dashboard() {
         tone: 'success',
       },
       {
-        to: '/library',
-        label: 'My Library',
-        description: count(documents.data.length, 'document'),
-        icon: Library,
+        to: '/fill-blanks',
+        label: 'Fill in the Blanks',
+        description: stats.data
+          ? `${count(stats.data.fill_blank_sets, 'exercise')} · ${count(stats.data.fill_blank_attempts, 'attempt')}`
+          : 'Practise recalling key terms',
+        icon: TextCursorInput,
         tone: 'warm',
       },
     ];

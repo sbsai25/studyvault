@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { generateFlashcards } from '../../api/client';
+import { generateFillBlanks, generateFlashcards } from '../../api/client';
 import { getErrorMessage } from '../../lib/errors';
 import { useIsMounted } from '../../lib/useIsMounted';
 import { useToast } from '../ui/toast/toastContext';
@@ -52,5 +52,21 @@ export function useStudyTools() {
     [isMounted, navigate, run, toast]
   );
 
-  return { pending, createFlashcards };
+  // count: number of sentences, 3-20 (the API's default is 10)
+  const createFillBlanks = useCallback(
+    (document, count) =>
+      run('fill-blanks', document, () => generateFillBlanks(document.id, count), (result) => {
+        const path = `/fill-blanks/${result.fill_blank_set_id}`;
+        if (isMounted()) {
+          navigate(path);
+        } else {
+          toast.success(`Exercise ready: ${result.title}`, {
+            action: { label: 'Start', onClick: () => navigate(path) },
+          });
+        }
+      }),
+    [isMounted, navigate, run, toast]
+  );
+
+  return { pending, createFlashcards, createFillBlanks };
 }

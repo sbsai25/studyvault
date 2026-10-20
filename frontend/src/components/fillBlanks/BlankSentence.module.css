@@ -1,0 +1,39 @@
+.sentence {
+  color: var(--color-text);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-medium);
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+
+/* The blank: an underlined slot that reads as part of the sentence */
+.input {
+  max-width: 100%;
+  margin: 0 4px;
+  padding: 2px 6px;
+  border: 0;
+  border-bottom: 2px solid var(--color-warm);
+  border-radius: 6px 6px 0 0;
+  background: var(--color-warm-tint);
+  color: var(--color-primary-text);
+  font: inherit;
+  font-weight: var(--weight-semibold);
+  text-align: center;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    width var(--duration-fast) var(--ease-out);
+}
+
+.input:focus-visible {
+  border-bottom-color: var(--color-primary);
+  background: var(--color-primary-tint);
+  outline: none;
+  box-shadow: 0 2px 0 0 var(--color-primary);
+}
+
+@media (max-width: 639px) {
+  .sentence {
+    font-size: var(--text-lg);
+  }
+}

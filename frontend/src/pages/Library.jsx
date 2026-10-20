@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, m } from 'motion/react';
-import { Layers, MessagesSquare, Search, SearchX, Upload } from 'lucide-react';
+import { Layers, MessagesSquare, Search, SearchX, TextCursorInput, Upload } from 'lucide-react';
 import { deleteDocument, getDocuments } from '../api/client';
 import { getErrorMessage } from '../lib/errors';
 import { fileTypeLabel } from '../lib/files';
@@ -50,7 +50,7 @@ function LibrarySkeleton() {
 function Library() {
   const { documentsVersion, openPicker } = useUploads();
   const { data: documents, error, loading, reload, setData } = useApi(getDocuments, [documentsVersion]);
-  const { pending, createFlashcards } = useStudyTools();
+  const { pending, createFlashcards, createFillBlanks } = useStudyTools();
   const confirm = useConfirm();
   const toast = useToast();
   const [query, setQuery] = useState('');
@@ -101,6 +101,7 @@ function Library() {
 
   const renderActions = (doc) => {
     const creatingFlashcards = pending?.documentId === doc.id && pending.tool === 'flashcards';
+    const creatingExercise = pending?.documentId === doc.id && pending.tool === 'fill-blanks';
     return (
       <>
         <Button variant="soft" size="sm" icon={MessagesSquare} to={`/chat?document=${doc.id}`}>
@@ -115,6 +116,16 @@ function Library() {
           onClick={() => createFlashcards(doc)}
         >
           {creatingFlashcards ? 'Creating flashcards…' : 'Flashcards'}
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={TextCursorInput}
+          loading={creatingExercise}
+          disabled={Boolean(pending)}
+          onClick={() => createFillBlanks(doc)}
+        >
+          {creatingExercise ? 'Creating exercise…' : 'Fill in the blanks'}
         </Button>
       </>
     );

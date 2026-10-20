@@ -1,0 +1,81 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.card:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-2-5) var(--space-2-5) var(--space-1-5);
+}
+
+.topRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-1);
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--color-warm-tint);
+  color: var(--color-warm-text);
+}
+
+.title {
+  font-size: var(--text-md);
+  line-height: var(--leading-snug);
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  color: var(--color-text-3);
+  font-size: var(--text-sm);
+}
+
+.source {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 2px;
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+}
+
+.source span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source svg {
+  flex-shrink: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1-5) var(--space-2-5) var(--space-2);
+}
+
+.delete {
+  margin-left: auto;
+}

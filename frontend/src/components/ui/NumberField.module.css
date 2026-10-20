@@ -1,0 +1,49 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.input {
+  width: 72px;
+  height: 40px;
+  border: 1px solid var(--color-border-input);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  text-align: center;
+  appearance: textfield;
+  -moz-appearance: textfield;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.input:focus-visible {
+  border-color: var(--color-primary);
+  box-shadow: var(--ring);
+  outline: none;
+}
+
+.hint {
+  color: var(--color-text-3);
+  font-size: var(--text-sm);
+}
