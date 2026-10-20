@@ -1,0 +1,125 @@
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  display: grid;
+  place-items: center;
+  padding: var(--space-2);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--color-overlay);
+  backdrop-filter: blur(2px);
+}
+
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: calc(100dvh - var(--space-4));
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+  outline: none;
+}
+
+.sm {
+  max-width: 420px;
+}
+
+.md {
+  max-width: 520px;
+}
+
+.lg {
+  max-width: 680px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3) 0;
+}
+
+.headerBare {
+  justify-content: flex-end;
+  padding: var(--space-1-5) var(--space-1-5) 0;
+}
+
+.headings {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.title {
+  font-size: var(--text-lg);
+}
+
+.description {
+  color: var(--color-text-2);
+}
+
+.close {
+  margin: -4px -8px 0 0;
+}
+
+.body {
+  min-height: 0;
+  padding: var(--space-2-5) var(--space-3) var(--space-3);
+  overflow-y: auto;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+}
+
+.header + .footer {
+  padding-top: var(--space-3);
+}
+
+/* Sheet: full-height panel from the left (mobile navigation) */
+.sheetRoot {
+  place-items: stretch start;
+  padding: 0;
+}
+
+.sheet {
+  width: min(320px, 86vw);
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  border: 0;
+  border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
+}
+
+.sheet .body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 0;
+}
+
+@media (max-width: 479px) {
+  .root:not(.sheetRoot) {
+    align-items: end;
+    padding: var(--space-1);
+  }
+
+  .footer > * {
+    flex: 1;
+  }
+}

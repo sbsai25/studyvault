@@ -1,0 +1,134 @@
+/*
+ * StudyVault design tokens. Every colour, size and timing in the app comes
+ * from here. Text colours meet WCAG AA (4.5:1) on --color-surface and
+ * --color-bg; --color-border-input meets 3:1 for form controls.
+ */
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --color-bg: #f7f7fb;
+  --color-surface: #ffffff;
+  --color-surface-2: #fbfbfd;
+  --color-surface-sunken: #f1f0f7;
+  --color-skeleton-highlight: #f8f7fc;
+  --color-overlay: rgb(37 35 58 / 0.32);
+
+  /* Borders */
+  --color-border: #e7e5ef;
+  --color-border-strong: #d6d3e3;
+  --color-border-input: #948fab;
+  --color-border-hover: #c4c0d6;
+  --color-border-input-hover: #7f7a98;
+
+  /* Text */
+  --color-text: #25233a;
+  --color-text-2: #55526b;
+  --color-text-3: #6e6b84;
+  --color-text-inverse: #ffffff;
+
+  /* Primary (purple). Use --color-primary-text for text on light surfaces. */
+  --color-primary: #6d5ce8;
+  --color-primary-hover: #5b49d6;
+  --color-primary-active: #4f3dc8;
+  --color-primary-text: #5b49d6;
+  --color-primary-tint: #f0eefd;
+  --color-primary-tint-2: #e4e0fb;
+  --color-primary-ring: rgb(109 92 232 / 0.32);
+
+  /* Status. The base colours are for icons and fills, the -text colours for text. */
+  --color-success: #3b9277;
+  --color-success-text: #2c7560;
+  --color-success-tint: #e8f4ef;
+  --color-warm: #e4a54a;
+  --color-warm-text: #94600f;
+  --color-warm-tint: #fcf3e4;
+  --color-danger: #d04a5c;
+  --color-danger-text: #b42f44;
+  --color-danger-hover: #9e2639;
+  --color-danger-tint: #fcedef;
+
+  /* Gradients: used sparingly (brand mark, signature animation, hero) */
+  --gradient-primary: linear-gradient(135deg, #8576f2 0%, #6d5ce8 50%, #5b49d6 100%);
+  --gradient-soft: linear-gradient(160deg, #f4f2fe 0%, #fbfbfd 55%, #fdf8f0 100%);
+
+  /* Typography */
+  --font-sans: 'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+    Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+
+  --text-xs: 0.75rem; /* 12px */
+  --text-sm: 0.8125rem; /* 13px */
+  --text-base: 0.9375rem; /* 15px */
+  --text-md: 1rem; /* 16px */
+  --text-lg: 1.125rem; /* 18px */
+  --text-xl: 1.375rem; /* 22px */
+  --text-2xl: 1.75rem; /* 28px */
+  --text-3xl: 2.25rem; /* 36px */
+
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.55;
+  --leading-relaxed: 1.7;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --tracking-tight: -0.02em;
+  --tracking-snug: -0.01em;
+  --tracking-wide: 0.06em;
+
+  /* Spacing: 8px scale with a 4px half step */
+  --space-0-5: 4px;
+  --space-1: 8px;
+  --space-1-5: 12px;
+  --space-2: 16px;
+  --space-2-5: 20px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 40px;
+  --space-6: 48px;
+  --space-8: 64px;
+
+  /* Radii */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+
+  /* Elevation: soft, low-contrast shadows tinted with the text colour */
+  --shadow-xs: 0 1px 2px rgb(37 35 58 / 0.05);
+  --shadow-sm: 0 1px 2px rgb(37 35 58 / 0.04), 0 2px 6px -1px rgb(37 35 58 / 0.06);
+  --shadow-md: 0 2px 4px rgb(37 35 58 / 0.04), 0 12px 28px -10px rgb(37 35 58 / 0.14);
+  --shadow-lg: 0 4px 10px rgb(37 35 58 / 0.05), 0 28px 56px -16px rgb(37 35 58 / 0.24);
+  --shadow-primary: 0 6px 16px -6px rgb(109 92 232 / 0.55);
+  --ring: 0 0 0 3px var(--color-primary-ring);
+
+  /* Motion */
+  --duration-instant: 120ms;
+  --duration-fast: 180ms;
+  --duration-base: 240ms;
+  --duration-slow: 400ms;
+  --duration-flip: 520ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Layout */
+  --sidebar-width: 248px;
+  --rail-width: 76px;
+  --topbar-height: 60px;
+  --content-max: 1180px;
+  --reading-max: 760px;
+
+  /* Stacking */
+  --z-sticky: 10;
+  --z-nav: 30;
+  --z-drawer: 40;
+  --z-dialog: 50;
+  --z-toast: 60;
+}

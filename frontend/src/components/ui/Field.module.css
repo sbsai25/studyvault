@@ -1,0 +1,119 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.label {
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  border: 1px solid var(--color-border-input);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.control:hover {
+  border-color: var(--color-border-input-hover);
+}
+
+.control:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: var(--ring);
+}
+
+.control.small {
+  min-height: 36px;
+}
+
+.invalid,
+.invalid:hover {
+  border-color: var(--color-danger-text);
+}
+
+.invalid:focus-within {
+  box-shadow: 0 0 0 3px rgb(180 47 68 / 0.2);
+}
+
+.input,
+.select {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: inherit;
+  padding: 0 var(--space-1-5);
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  font-size: var(--text-md);
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--color-text-3);
+}
+
+/* The control shows the focus ring, not the input */
+.input:focus-visible,
+.select:focus-visible {
+  outline: none;
+}
+
+.hasIcon .input,
+.hasIcon .select {
+  padding-left: 40px;
+}
+
+.leadingIcon {
+  position: absolute;
+  left: var(--space-1-5);
+  color: var(--color-text-3);
+  pointer-events: none;
+}
+
+.trailing {
+  display: flex;
+  align-items: center;
+  padding-right: 4px;
+}
+
+.selectControl .select {
+  padding-right: 36px;
+  appearance: none;
+  cursor: pointer;
+  font-size: var(--text-base);
+}
+
+.small .select {
+  font-size: var(--text-sm);
+}
+
+.chevron {
+  position: absolute;
+  right: var(--space-1-5);
+  color: var(--color-text-3);
+  pointer-events: none;
+}
+
+.hint {
+  color: var(--color-text-3);
+  font-size: var(--text-sm);
+}
+
+.error {
+  color: var(--color-danger-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}

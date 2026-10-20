@@ -1,0 +1,65 @@
+.group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  max-width: 100%;
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-sunken);
+}
+
+.option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 var(--space-1-5);
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.option:hover:not(.checked) {
+  color: var(--color-text);
+}
+
+.checked {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
+}
+
+.count {
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-2);
+  font-size: var(--text-xs);
+}
+
+.checked .count {
+  background: var(--color-primary-tint);
+  color: var(--color-primary-text);
+}
+
+.sm .option {
+  height: 28px;
+  padding: 0 var(--space-1);
+}
+
+@media (pointer: coarse) {
+  .option,
+  .sm .option {
+    height: 38px;
+  }
+}

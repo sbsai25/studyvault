@@ -1,0 +1,16 @@
+.spinner {
+  display: inline-flex;
+  flex-shrink: 0;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Reduced motion: keep turning, but slowly */
+:global(:root[data-motion='reduced']) .spinner {
+  animation-duration: 2.4s;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

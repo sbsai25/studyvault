@@ -1,0 +1,28 @@
+.skeleton {
+  display: block;
+  border-radius: var(--radius-xs);
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-sunken) 0%,
+    var(--color-skeleton-highlight) 40%,
+    var(--color-surface-sunken) 80%
+  );
+  background-size: 220% 100%;
+  animation: shimmer 1.4s var(--ease-in-out) infinite;
+}
+
+.lines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
