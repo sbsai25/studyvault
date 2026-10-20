@@ -4,6 +4,7 @@ import os
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 import backend.database  # loads .env before the routers read their settings
 import backend.models
@@ -61,4 +62,12 @@ def root():
 
 @app.get("/health")
 def health_check():
+    # Also checks the database, so the platform's health check fails when
+    # the API can't reach PostgreSQL
+    try:
+        with backend.database.engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception:
+        logger.exception("Health check: database unreachable")
+        return JSONResponse(status_code=503, content={"status": "unhealthy"})
     return {"status": "healthy"}

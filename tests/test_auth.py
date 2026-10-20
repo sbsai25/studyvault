@@ -12,6 +12,28 @@ def test_health_check():
     assert response.json() == {"status": "healthy"}
 
 
+def test_health_check_reports_database_outage():
+    from unittest.mock import patch
+
+    import backend.database
+
+    with patch.object(backend.database.engine, "connect", side_effect=OSError("db down")):
+        response = client.get("/health")
+    assert response.status_code == 503
+    assert response.json() == {"status": "unhealthy"}
+
+
+@pytest.mark.parametrize("url, expected", [
+    ("postgres://u:p@h:5432/db", "postgresql+psycopg://u:p@h:5432/db"),
+    ("postgresql://u:p@h:5432/db", "postgresql+psycopg://u:p@h:5432/db"),
+    ("postgresql+psycopg://u:p@h:5432/db", "postgresql+psycopg://u:p@h:5432/db"),
+])
+def test_normalize_database_url(url, expected):
+    from backend.database import normalize_database_url
+
+    assert normalize_database_url(url) == expected
+
+
 def test_auth_full_flow():
     # Generate unique test email
     unique_id = uuid.uuid4().hex[:8]

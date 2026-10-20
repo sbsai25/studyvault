@@ -21,6 +21,8 @@ USER appuser
 
 EXPOSE 8000
 
-# Apply additive migrations, then serve. --proxy-headers lets the rate
-# limiter see real client IPs when running behind a reverse proxy.
-CMD ["sh", "-c", "python -m backend.migrate_db && uvicorn backend.main:app --host 0.0.0.0 --port 8000 --proxy-headers"]
+# Apply additive migrations, then serve on $PORT (set by Railway; 8000
+# otherwise). --proxy-headers lets the rate limiter see real client IPs
+# behind a reverse proxy; uvicorn trusts the proxies listed in the
+# FORWARDED_ALLOW_IPS env var (default 127.0.0.1).
+CMD ["sh", "-c", "python -m backend.migrate_db && uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers"]
