@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, m } from 'motion/react';
-import { Layers, Search, SearchX, Upload } from 'lucide-react';
+import { Layers, MessagesSquare, Search, SearchX, Upload } from 'lucide-react';
 import { deleteDocument, getDocuments } from '../api/client';
 import { getErrorMessage } from '../lib/errors';
 import { fileTypeLabel } from '../lib/files';
@@ -99,6 +99,27 @@ function Library() {
     }
   };
 
+  const renderActions = (doc) => {
+    const creatingFlashcards = pending?.documentId === doc.id && pending.tool === 'flashcards';
+    return (
+      <>
+        <Button variant="soft" size="sm" icon={MessagesSquare} to={`/chat?document=${doc.id}`}>
+          Ask AI
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={Layers}
+          loading={creatingFlashcards}
+          disabled={Boolean(pending)}
+          onClick={() => createFlashcards(doc)}
+        >
+          {creatingFlashcards ? 'Creating flashcards…' : 'Flashcards'}
+        </Button>
+      </>
+    );
+  };
+
   const hasDocuments = documents?.length > 0;
   const filtering = query.trim() !== '' || activeType !== 'all';
 
@@ -172,20 +193,7 @@ function Library() {
                     document={doc}
                     deleting={deletingId === doc.id}
                     onDelete={() => handleDelete(doc)}
-                    actions={
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        icon={Layers}
-                        loading={pending?.documentId === doc.id && pending.tool === 'flashcards'}
-                        disabled={Boolean(pending)}
-                        onClick={() => createFlashcards(doc)}
-                      >
-                        {pending?.documentId === doc.id && pending.tool === 'flashcards'
-                          ? 'Creating flashcards…'
-                          : 'Flashcards'}
-                      </Button>
-                    }
+                    actions={renderActions(doc)}
                   />
                 </m.li>
               ))}
@@ -216,7 +224,13 @@ function Library() {
       />
       <div className={styles.stack}>
         {hasDocuments && <UploadDropzone size="compact" />}
-        <UploadQueue />
+        <UploadQueue
+          renderDoneAction={(item) => (
+            <Button variant="soft" size="sm" icon={MessagesSquare} to={`/chat?document=${item.documentId}`}>
+              Ask AI
+            </Button>
+          )}
+        />
         {content}
       </div>
     </Page>

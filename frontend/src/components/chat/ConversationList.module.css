@@ -1,0 +1,114 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  list-style: none;
+}
+
+.item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.item:hover {
+  background: var(--color-surface-sunken);
+}
+
+.active,
+.active:hover {
+  background: var(--color-primary-tint);
+}
+
+.link {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 9px 10px;
+  border-radius: inherit;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.title {
+  overflow: hidden;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.active .title {
+  color: var(--color-primary-text);
+  font-weight: var(--weight-semibold);
+}
+
+.time {
+  color: var(--color-text-3);
+  font-size: var(--text-xs);
+}
+
+/* Actions appear on hover or keyboard focus; always visible on touch screens */
+.actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+  padding-right: 4px;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.item:hover .actions,
+.item:focus-within .actions {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .actions {
+    opacity: 1;
+  }
+}
+
+.editing {
+  padding: 4px;
+}
+
+.renameInput {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface);
+  box-shadow: var(--ring);
+  font-size: var(--text-base);
+  outline: none;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.skeletonRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-2);
+  color: var(--color-text-3);
+  font-size: var(--text-sm);
+  text-align: center;
+}

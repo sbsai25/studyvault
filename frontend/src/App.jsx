@@ -13,6 +13,7 @@ const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const Library = lazy(() => import('./pages/Library'));
+const Chat = lazy(() => import('./pages/Chat'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const FlashcardDecksList = lazy(() => import('./components/flashcards/FlashcardDecksList'));
 const FlashcardStudyMode = lazy(() => import('./components/flashcards/FlashcardStudyMode'));
@@ -34,6 +35,8 @@ function App() {
                     <Route element={<AppShell />}>
                       <Route path="/" element={<Dashboard />} />
                       <Route path="/library" element={<Library />} />
+                      <Route path="/chat" element={<Chat />} />
+                      <Route path="/chat/:conversationId" element={<Chat />} />
                       <Route path="/flashcards" element={<FlashcardDecksList />} />
                       <Route path="/flashcards/:setId/success" element={<FlashcardGenerationSuccess />} />
                       <Route path="/flashcards/:setId" element={<FlashcardStudyMode />} />
