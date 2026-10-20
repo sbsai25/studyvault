@@ -292,6 +292,8 @@ cp .env.example .env
 | `MAX_UPLOAD_MB` | No | Maximum upload size in megabytes (default `20`) |
 | `CHROMA_PATH` | No | Where ChromaDB stores vectors (default `.chroma/` in the project root) |
 | `UPLOAD_DIR` | No | Where uploaded files are stored (default `uploads/` in the project root) |
+| `FORWARDED_ALLOW_IPS` | No | Proxies whose `X-Forwarded-For` uvicorn trusts (default `127.0.0.1`; `*` on Railway) |
+| `VITE_API_BASE_URL` | No (frontend) | API URL baked into the frontend build (default `http://127.0.0.1:8000`) |
 
 `.env` is git-ignored. Never commit real values.
 
@@ -313,7 +315,7 @@ cd frontend
 npm run dev
 ```
 
-The frontend expects the API at `http://127.0.0.1:8000`, and the backend allows CORS from `http://localhost:5173` by default.
+The frontend calls the API at `http://127.0.0.1:8000` unless `VITE_API_BASE_URL` is set (see `frontend/.env.example`), and the backend allows CORS from `http://localhost:5173` by default.
 
 **Upgrading an existing database:** run `python -m backend.migrate_db`. It creates missing tables and adds newer columns (for example `messages.sources` and the spaced-repetition columns on `flashcard_progress`), and it is safe to run more than once. It never drops tables or deletes rows. Existing flashcard progress starts the new schedule from scratch at its next review.
 
@@ -341,6 +343,62 @@ docker compose up --build
 This starts PostgreSQL 16 (exposed on host port `5433`, so it doesn't clash with a local install) and the API on `http://localhost:8000`. The API container runs `migrate_db` on start, and uploads and vectors are kept in Docker volumes. A `studyvault_test` database is created on first start, so you can run the tests from your machine against it with `TEST_DATABASE_URL=postgresql+psycopg://studyvault:studyvault@localhost:5433/studyvault_test`.
 
 > The Docker setup has not been tested yet: Docker wasn't available on the machine it was written on.
+
+## Deployment (Railway + Vercel)
+
+The API and PostgreSQL run on [Railway](https://railway.com), and the React app on [Vercel](https://vercel.com). `railway.json` and `frontend/vercel.json` hold the settings that can live in the repo; everything else is set in the two dashboards.
+
+### 1. Backend and PostgreSQL on Railway
+
+1. **New Project → Deploy from GitHub repo** and pick this repository. Railway reads `railway.json`: it builds the root `Dockerfile`, runs one replica, and uses `/health` as the health check. The container runs `python -m backend.migrate_db` (additive only) and then starts uvicorn on `$PORT`.
+2. **Add PostgreSQL:** in the project, choose **+ Create → Database → PostgreSQL**.
+3. **Add a volume** to the API service (right-click the service → **Attach volume**), mounted at **`/data`**. Uploaded files and ChromaDB both live there, so they survive redeploys.
+4. **Variables** on the API service:
+
+   | Variable | Value |
+   |---|---|
+   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (the private network URL; `postgresql://` is accepted and switched to psycopg 3) |
+   | `SECRET_KEY` | a new random value: `python -c "import secrets; print(secrets.token_urlsafe(64))"`. Don't reuse the development one. |
+   | `GEMINI_API_KEY` | your Gemini key (ideally a separate key/project from development, since free-tier quotas are shared per project) |
+   | `GEMINI_MODEL` | `gemini-3.5-flash-lite` (optional) |
+   | `CORS_ORIGINS` | the Vercel URL, e.g. `https://studyvault.vercel.app` (no trailing slash; comma-separate several) |
+   | `MAX_UPLOAD_MB` | `20` (optional) |
+   | `UPLOAD_DIR` | `/data/uploads` (already the image default) |
+   | `CHROMA_PATH` | `/data/chroma` (already the image default) |
+   | `FORWARDED_ALLOW_IPS` | `*`, so the rate limiter sees each client's IP instead of Railway's proxy |
+   | `RAILWAY_RUN_UID` | `0`. Railway mounts volumes as root, and the image otherwise runs as a non-root user that can't write to `/data`. |
+
+5. **Settings → Networking → Generate Domain** to get the public API URL, e.g. `https://studyvault-production.up.railway.app`. Check `https://<api-domain>/health` returns `{"status": "healthy"}`; it returns `503` if the database is unreachable.
+
+Never set `TEST_DATABASE_URL` or `ALLOW_TEST_DB_RESET` on Railway, and never run pytest or `init_db` against the production database.
+
+### 2. Frontend on Vercel
+
+1. **Add New → Project** and import this repository.
+2. **Root Directory:** `frontend`. **Framework preset:** Vite. **Build command:** `npm run build`. **Output directory:** `dist`.
+3. **Environment variable:** `VITE_API_BASE_URL` = the Railway API URL (no trailing slash). It is baked into the bundle at build time, so changing it needs a redeploy. Don't put secrets in `VITE_` variables; they are public.
+4. Deploy, then set `CORS_ORIGINS` on Railway to the Vercel production URL (Railway redeploys automatically). Vercel preview deployments get other URLs and are not allowed by CORS unless you add them.
+
+`frontend/vercel.json` rewrites every path to `index.html`, so refreshing `/dashboard` works.
+
+### Operating notes
+
+- **Run a single API instance.** ChromaDB is a local folder on the volume and rate limits are kept in memory, so several replicas would each see different data.
+- **A volume is not a backup.** PostgreSQL (Railway's Postgres service) and the files and vectors (the `/data` volume) are stored separately; back up both if the data matters.
+- **Migrations:** every deploy runs `migrate_db`, which creates missing tables and adds missing columns and never drops anything.
+- **Existing sessions:** refresh tokens issued before rotation was added are rejected, so users log in again after the first deploy.
+
+### Troubleshooting
+
+| Symptom | Likely cause |
+|---|---|
+| Browser console shows a CORS error | `CORS_ORIGINS` doesn't exactly match the Vercel origin (scheme, no trailing slash) |
+| Frontend calls `127.0.0.1:8000` | `VITE_API_BASE_URL` wasn't set when Vercel built it; set it and redeploy |
+| Deploy fails its health check | Check the deploy logs: `DATABASE_URL` missing or wrong, or migrations failed |
+| Uploads fail with `500`, log shows `PermissionError` on `/data` | `RAILWAY_RUN_UID=0` isn't set, or the volume isn't mounted at `/data` |
+| Chat or generation returns `502` | Gemini quota or outage; the log shows the provider error (see the quota note above) |
+| Every user hits `429` together | `FORWARDED_ALLOW_IPS` isn't `*`, so all requests look like they come from the proxy |
+| Documents listed but chat finds nothing after a redeploy | No volume at `/data`, so ChromaDB was lost with the old container |
 
 ## Screenshots
 
