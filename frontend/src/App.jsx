@@ -21,6 +21,8 @@ const FlashcardSuccess = lazy(() => import('./pages/FlashcardSuccess'));
 const FillBlankSets = lazy(() => import('./pages/FillBlankSets'));
 const FillBlankExercise = lazy(() => import('./pages/FillBlankExercise'));
 const FillBlankAttempt = lazy(() => import('./pages/FillBlankAttempt'));
+const Progress = lazy(() => import('./pages/Progress'));
+const Settings = lazy(() => import('./pages/Settings'));
 
 function App() {
   return (
@@ -46,6 +48,8 @@ function App() {
                       <Route path="/fill-blanks" element={<FillBlankSets />} />
                       <Route path="/fill-blanks/attempts/:attemptId" element={<FillBlankAttempt />} />
                       <Route path="/fill-blanks/:setId" element={<FillBlankExercise />} />
+                      <Route path="/progress" element={<Progress />} />
+                      <Route path="/settings" element={<Settings />} />
                       <Route path="*" element={<NotFound />} />
                     </Route>
                   </Route>

@@ -29,12 +29,13 @@ function MotionProvider({ children }) {
     () => ({
       preference,
       reduced,
+      systemReduced,
       setPreference: (next) => {
         storeMotionPreference(next);
         setPreferenceState(next);
       },
     }),
-    [preference, reduced]
+    [preference, reduced, systemReduced]
   );
 
   return (

@@ -48,6 +48,7 @@ export function applyMotionAttribute(reduced) {
 export const MotionPreferenceContext = createContext({
   preference: 'system',
   reduced: false,
+  systemReduced: false,
   setPreference: () => {},
 });
 

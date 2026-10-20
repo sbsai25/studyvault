@@ -1,0 +1,79 @@
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-2-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+}
+
+.primary {
+  background: var(--color-primary-tint);
+  color: var(--color-primary-text);
+}
+
+.warm {
+  background: var(--color-warm-tint);
+  color: var(--color-warm-text);
+}
+
+.success {
+  background: var(--color-success-tint);
+  color: var(--color-success-text);
+}
+
+.danger {
+  background: var(--color-danger-tint);
+  color: var(--color-danger-text);
+}
+
+.valueRow {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 44px;
+}
+
+/* Proportional figures read better at display sizes */
+.value {
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  line-height: 1.15;
+}
+
+.unit {
+  color: var(--color-text-2);
+  font-weight: var(--weight-medium);
+}
+
+.empty {
+  align-self: center;
+  color: var(--color-text-3);
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+}
+
+.detail {
+  color: var(--color-text-3);
+  font-size: var(--text-sm);
+}

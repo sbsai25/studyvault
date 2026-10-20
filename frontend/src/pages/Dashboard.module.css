@@ -21,6 +21,11 @@
   background: var(--color-surface);
 }
 
+.progressLink {
+  align-self: flex-start;
+  margin: -4px 0 -6px -10px;
+}
+
 .errorCard {
   display: grid;
   place-items: center;

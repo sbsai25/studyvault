@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { m } from 'motion/react';
-import { Layers, MessagesSquare, TextCursorInput, Upload } from 'lucide-react';
+import { ArrowRight, Layers, MessagesSquare, TextCursorInput, Upload } from 'lucide-react';
 import { getConversations, getDocuments, getDueFlashcards, getFlashcardSets, getStats } from '../api/client';
 import { greetingFor } from '../lib/dates';
 import { getErrorMessage } from '../lib/errors';
@@ -145,7 +145,14 @@ function Dashboard() {
             />
           )}
           {stats.data ? (
-            <WeekCard stats={stats.data} />
+            <WeekCard
+              stats={stats.data}
+              footer={
+                <Button variant="ghost" size="sm" to="/progress" iconRight={ArrowRight} className={styles.progressLink}>
+                  View progress
+                </Button>
+              }
+            />
           ) : stats.error ? (
             <div className={styles.errorCard}>
               <ErrorState
