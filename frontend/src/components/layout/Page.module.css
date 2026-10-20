@@ -1,0 +1,31 @@
+.page {
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-5) var(--space-8);
+}
+
+.default {
+  max-width: calc(var(--content-max) + 2 * var(--space-5));
+}
+
+.narrow {
+  max-width: calc(var(--reading-max) + 2 * var(--space-5));
+}
+
+/* Full-bleed screens (chat) manage their own padding and height */
+.full {
+  max-width: none;
+  padding: 0;
+}
+
+@media (max-width: 1023px) {
+  .page:not(.full) {
+    padding: var(--space-4) var(--space-3) var(--space-6);
+  }
+}
+
+@media (max-width: 639px) {
+  .page:not(.full) {
+    padding: var(--space-3) var(--space-2) var(--space-6);
+  }
+}

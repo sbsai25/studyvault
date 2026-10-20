@@ -1,33 +1,50 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
-import Navbar from './components/Navbar';
-import LoginForm from './components/LoginForm';
-import RegisterForm from './components/RegisterForm';
+import MotionProvider from './motion/MotionProvider';
+import ToastProvider from './components/ui/toast/ToastProvider';
+import ConfirmProvider from './components/ui/confirm/ConfirmProvider';
 import ProtectedRoute from './components/ProtectedRoute';
+import AppShell from './components/layout/AppShell';
+import SplashScreen from './components/layout/SplashScreen';
 
-import Dashboard from './components/Dashboard';
-import FlashcardStudyMode from './components/flashcards/FlashcardStudyMode';
-import FlashcardGenerationSuccess from './components/flashcards/FlashcardGenerationSuccess';
-import FlashcardDecksList from './components/flashcards/FlashcardDecksList';
+// Each screen is its own chunk, loaded when first opened
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const FlashcardDecksList = lazy(() => import('./components/flashcards/FlashcardDecksList'));
+const FlashcardStudyMode = lazy(() => import('./components/flashcards/FlashcardStudyMode'));
+const FlashcardGenerationSuccess = lazy(() => import('./components/flashcards/FlashcardGenerationSuccess'));
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Navbar />
-        <Routes>
-          <Route path="/login" element={<LoginForm />} />
-          <Route path="/register" element={<RegisterForm />} />
+    <MotionProvider>
+      <ToastProvider>
+        <ConfirmProvider>
+          <AuthProvider>
+            <Router>
+              <Suspense fallback={<SplashScreen />}>
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
 
-          <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/flashcards" element={<FlashcardDecksList />} />
-            <Route path="/flashcards/:setId/success" element={<FlashcardGenerationSuccess />} />
-            <Route path="/flashcards/:setId" element={<FlashcardStudyMode />} />
-          </Route>
-        </Routes>
-      </Router>
-    </AuthProvider>
+                  <Route element={<ProtectedRoute />}>
+                    <Route element={<AppShell />}>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/flashcards" element={<FlashcardDecksList />} />
+                      <Route path="/flashcards/:setId/success" element={<FlashcardGenerationSuccess />} />
+                      <Route path="/flashcards/:setId" element={<FlashcardStudyMode />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Route>
+                  </Route>
+                </Routes>
+              </Suspense>
+            </Router>
+          </AuthProvider>
+        </ConfirmProvider>
+      </ToastProvider>
+    </MotionProvider>
   );
 }
 

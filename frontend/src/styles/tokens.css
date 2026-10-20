@@ -47,6 +47,7 @@
   --color-danger-text: #b42f44;
   --color-danger-hover: #9e2639;
   --color-danger-tint: #fcedef;
+  --color-danger-border: #f2c9cf;
 
   /* Gradients: used sparingly (brand mark, signature animation, hero) */
   --gradient-primary: linear-gradient(135deg, #8576f2 0%, #6d5ce8 50%, #5b49d6 100%);

@@ -40,12 +40,22 @@ client.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// A 401 from these means wrong credentials or a bad token, not an expired
+// session, so it goes straight back to the caller (e.g. the login form)
+const AUTH_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout'];
+const isAuthEndpoint = (url = '') => AUTH_ENDPOINTS.some((path) => url.endsWith(path));
+
 client.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+    if (
+      error.response &&
+      error.response.status === 401 &&
+      !originalRequest._retry &&
+      !isAuthEndpoint(originalRequest.url)
+    ) {
       originalRequest._retry = true;
       const refreshToken = localStorage.getItem('refresh_token');
 

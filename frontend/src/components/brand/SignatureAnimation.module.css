@@ -1,0 +1,138 @@
+/* Every animated part uses `both` fill so it starts hidden and keeps its
+   final state. Total runtime is about 2.3s; nothing loops. */
+
+.scene {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.document,
+.output,
+.core {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.document {
+  animation: doc-in 0.55s var(--ease-out) both;
+}
+
+.linesIn {
+  animation: fade-in 0.5s var(--ease-out) 0.45s both;
+}
+
+.linesOut {
+  animation: fade-in 0.45s var(--ease-out) 1.35s both;
+}
+
+.particle {
+  opacity: 0;
+  animation: travel 0.62s var(--ease-in-out) both;
+}
+
+.glow {
+  animation: glow 1.2s var(--ease-out) 0.95s both;
+}
+
+.orbit {
+  animation: fade-in 0.6s var(--ease-out) 1.05s both;
+}
+
+.core {
+  animation: core-in 0.75s var(--ease-out) 0.9s both;
+}
+
+.output {
+  animation: output-in 0.62s var(--ease-out) both;
+}
+
+/* The caret blinks twice while the blank is "being filled", then stays */
+.caret {
+  animation: caret 0.5s steps(1) 2.1s 2 both;
+}
+
+@keyframes doc-in {
+  from {
+    opacity: 0;
+    transform: translate(-16px, 6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes travel {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  20% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy));
+  }
+}
+
+@keyframes glow {
+  0% {
+    opacity: 0;
+  }
+  45% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes core-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes output-in {
+  from {
+    opacity: 0;
+    transform: translate(var(--from-x), var(--from-y)) scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes caret {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
