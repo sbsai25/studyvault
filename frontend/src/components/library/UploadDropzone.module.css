@@ -1,0 +1,108 @@
+.zone {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1.5px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.zone:hover {
+  border-color: var(--color-border-hover);
+}
+
+.compact {
+  padding: var(--space-2) var(--space-2-5);
+}
+
+.lg {
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--space-6) var(--space-3);
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 0%, rgb(109 92 232 / 0.06), transparent 60%),
+    var(--color-surface);
+}
+
+.icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-tint);
+  color: var(--color-primary-text);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.lg .icon {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-lg);
+}
+
+.text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lg .text {
+  flex: none;
+  gap: 6px;
+  max-width: 440px;
+}
+
+.title {
+  font-weight: var(--weight-semibold);
+}
+
+.lg .title {
+  font-size: var(--text-lg);
+}
+
+.description {
+  color: var(--color-text-2);
+}
+
+.hint {
+  color: var(--color-text-3);
+  font-size: var(--text-sm);
+}
+
+.lg .button {
+  margin-top: var(--space-1);
+}
+
+/* Drag-over: tint the zone and lift the icon */
+.dragging {
+  border-style: solid;
+  border-color: var(--color-primary);
+  background: var(--color-primary-tint);
+  box-shadow: var(--ring);
+}
+
+.dragging .icon {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  transform: translateY(-3px) scale(1.06);
+}
+
+@media (max-width: 639px) {
+  .compact {
+    flex-wrap: wrap;
+  }
+
+  .compact .button {
+    width: 100%;
+  }
+}

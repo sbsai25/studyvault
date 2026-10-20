@@ -7,6 +7,7 @@ import Logo, { LogoMark } from '../brand/Logo';
 import Dialog from '../ui/Dialog';
 import IconButton from '../ui/IconButton';
 import Spinner from '../ui/Spinner';
+import UploadProvider from '../library/upload/UploadProvider';
 import { NAV_ITEMS } from './navItems';
 import styles from './AppShell.module.css';
 
@@ -137,9 +138,12 @@ function AppShell() {
       </Dialog>
 
       <main id="main" ref={mainRef} tabIndex={-1} className={styles.main}>
-        <Suspense fallback={<PageFallback />}>
-          <Outlet />
-        </Suspense>
+        {/* Uploads live here so they continue while moving between screens */}
+        <UploadProvider>
+          <Suspense fallback={<PageFallback />}>
+            <Outlet />
+          </Suspense>
+        </UploadProvider>
       </main>
     </div>
   );

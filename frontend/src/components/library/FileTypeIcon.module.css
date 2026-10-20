@@ -1,0 +1,39 @@
+.tile {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+}
+
+.sm {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+}
+
+.danger {
+  background: var(--color-danger-tint);
+  color: var(--color-danger-text);
+}
+
+.primary {
+  background: var(--color-primary-tint);
+  color: var(--color-primary-text);
+}
+
+.warm {
+  background: var(--color-warm-tint);
+  color: var(--color-warm-text);
+}
+
+.success {
+  background: var(--color-success-tint);
+  color: var(--color-success-text);
+}
+
+.neutral {
+  background: var(--color-surface-sunken);
+  color: var(--color-text-2);
+}

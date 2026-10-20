@@ -81,14 +81,21 @@ client.interceptors.response.use(
   }
 );
 
-export const uploadDocument = async (file) => {
+// onProgress(fraction) reports how much of the file has been sent (0-1).
+// The server then extracts and indexes the text before responding.
+export const uploadDocument = async (file, { onProgress } = {}) => {
   const formData = new FormData();
   formData.append('file', file);
-  
+
   const response = await client.post('/documents/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
+    onUploadProgress: onProgress
+      ? (event) => {
+          if (event.total) onProgress(event.loaded / event.total);
+        }
+      : undefined,
   });
   return response.data;
 };
