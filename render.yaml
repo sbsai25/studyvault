@@ -7,7 +7,7 @@ services:
     runtime: docker
     plan: free
     # Pick the Render region closest to your Neon database's region
-    region: oregon
+    region: singapore
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     envVars:
