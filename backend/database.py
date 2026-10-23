@@ -28,8 +28,14 @@ if not DATABASE_URL:
 DATABASE_URL = normalize_database_url(DATABASE_URL)
 
 # Serverless Postgres (e.g. Neon) drops idle connections when it scales to
-# zero, so check each pooled connection before handing it out
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+# zero, so check each pooled connection before handing it out. The connect
+# timeout makes a request fail instead of hanging when the database is slow
+# to wake up or unreachable.
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+    connect_args={"connect_timeout": 10},
+)
 
 
 def create_vector_extension(conn):

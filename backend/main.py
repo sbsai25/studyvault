@@ -60,10 +60,18 @@ def root():
     return {"message": "StudyVault API is running"}
 
 
+@app.get("/livez")
+def liveness_check():
+    # Render's health check: only confirms the server is up. It doesn't touch
+    # the database, so a sleeping Neon database waking up slowly doesn't make
+    # Render restart the instance, and the checks don't keep Neon awake.
+    return {"status": "ok"}
+
+
 @app.get("/health")
 def health_check():
-    # Also checks the database, so the platform's health check fails when
-    # the API can't reach PostgreSQL
+    # Also checks the database, for checking by hand that the API can reach
+    # PostgreSQL
     try:
         with backend.database.engine.connect() as conn:
             conn.execute(text("SELECT 1"))

@@ -9,7 +9,8 @@ services:
     # Pick the Render region closest to your Neon database's region
     region: singapore
     dockerfilePath: ./Dockerfile
-    healthCheckPath: /health
+    # /livez doesn't query the database; /health does (see backend/main.py)
+    healthCheckPath: /livez
     envVars:
       - key: DATABASE_URL
         sync: false # Neon connection string, entered in the dashboard

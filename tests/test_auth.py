@@ -12,6 +12,17 @@ def test_health_check():
     assert response.json() == {"status": "healthy"}
 
 
+def test_liveness_check_skips_database():
+    from unittest.mock import patch
+
+    import backend.database
+
+    with patch.object(backend.database.engine, "connect", side_effect=OSError("db down")):
+        response = client.get("/livez")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
 def test_health_check_reports_database_outage():
     from unittest.mock import patch
 
