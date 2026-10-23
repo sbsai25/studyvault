@@ -2,6 +2,8 @@
 
 An AI study assistant: upload your notes, ask questions about them, and turn them into flashcards and fill-in-the-blank exercises. Built with a FastAPI + PostgreSQL (pgvector) backend, Google Gemini, and a React frontend.
 
+**Live demo:** [studyvault-amber.vercel.app](https://studyvault-amber.vercel.app). It runs on free hosting, so the first request after the API has been idle for a while takes up to a minute while the server wakes up.
+
 ## Overview
 
 Students collect PDFs, slides, and notes, but searching through them and turning them into revision material takes time. StudyVault turns your own documents into a searchable knowledge base:
@@ -429,7 +431,21 @@ Never set `TEST_DATABASE_URL` or `ALLOW_TEST_DB_RESET` on Render, and never run 
 
 ## Screenshots
 
-> **TODO:** Add screenshots of the dashboard (upload + chat with sources), and flashcard study mode.
+**Dashboard:** what's due, study streak and recent activity.
+
+![Dashboard](docs/screenshots/dashboard.jpg)
+
+**AI Chat:** answers from your own documents, with the source passages listed underneath.
+
+![AI Chat with sources](docs/screenshots/chat.jpg)
+
+**Flashcards:** study a deck and rate each card; spaced repetition decides when it comes back.
+
+![Flashcard study](docs/screenshots/flashcards.jpg)
+
+**My Library:** upload PDF, DOCX, PPTX, Markdown or text files and turn them into chats, flashcards or exercises.
+
+![My Library](docs/screenshots/library.jpg)
 
 ## Future Improvements
 
