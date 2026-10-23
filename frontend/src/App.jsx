@@ -7,6 +7,7 @@ import ConfirmProvider from './components/ui/confirm/ConfirmProvider';
 import ProtectedRoute from './components/ProtectedRoute';
 import AppShell from './components/layout/AppShell';
 import SplashScreen from './components/layout/SplashScreen';
+import ServerWakeNotice from './components/layout/ServerWakeNotice';
 
 // Each screen is its own chunk, loaded when first opened
 const Login = lazy(() => import('./pages/Login'));
@@ -59,6 +60,7 @@ function App() {
           </AuthProvider>
         </ConfirmProvider>
       </ToastProvider>
+      <ServerWakeNotice />
     </MotionProvider>
   );
 }

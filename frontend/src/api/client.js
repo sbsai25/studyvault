@@ -7,6 +7,44 @@ const client = axios.create({
   baseURL: API_BASE_URL,
 });
 
+// The free API host sleeps after 15 minutes without requests and takes up to
+// a minute to start again. When nothing has been heard from it for a while
+// and a request is still pending after a few seconds, listeners are told it
+// is waking up, and told again once every such request has settled.
+const WAKE_NOTICE_DELAY_MS = 5000;
+const SERVER_IDLE_MS = 14 * 60 * 1000;
+let lastResponseAt = 0;
+const slowRequests = new Set();
+const wakeListeners = new Set();
+
+const notifyWake = () => wakeListeners.forEach((listener) => listener(slowRequests.size > 0));
+
+// listener(isWaking); returns an unsubscribe function
+export const onServerWaking = (listener) => {
+  wakeListeners.add(listener);
+  return () => {
+    wakeListeners.delete(listener);
+  };
+};
+
+// Call when a request starts; call the returned function when it settles,
+// with whether the server answered.
+const trackRequest = () => {
+  const request = {};
+  const timer =
+    Date.now() - lastResponseAt > SERVER_IDLE_MS
+      ? setTimeout(() => {
+          slowRequests.add(request);
+          notifyWake();
+        }, WAKE_NOTICE_DELAY_MS)
+      : null;
+  return (answered) => {
+    clearTimeout(timer);
+    if (answered) lastResponseAt = Date.now();
+    if (slowRequests.delete(request)) notifyWake();
+  };
+};
+
 // Refresh tokens are single-use (the server rotates them and treats reuse as
 // theft), so when several requests get a 401 at once they must share one
 // refresh call instead of each sending the same token.
@@ -14,8 +52,19 @@ let refreshPromise = null;
 
 const refreshTokens = (refreshToken) => {
   if (!refreshPromise) {
+    const settle = trackRequest();
     refreshPromise = axios
       .post(`${API_BASE_URL}/auth/refresh`, { refresh_token: refreshToken })
+      .then(
+        (res) => {
+          settle(true);
+          return res;
+        },
+        (error) => {
+          settle(Boolean(error.response));
+          throw error;
+        }
+      )
       .then((res) => {
         const { access_token, refresh_token: new_refresh } = res.data;
         localStorage.setItem('access_token', access_token);
@@ -35,6 +84,7 @@ client.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    config.settleWake = trackRequest();
     return config;
   },
   (error) => Promise.reject(error)
@@ -46,9 +96,13 @@ const AUTH_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/refresh', '/auth
 const isAuthEndpoint = (url = '') => AUTH_ENDPOINTS.some((path) => url.endsWith(path));
 
 client.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    response.config.settleWake?.(true);
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
+    originalRequest?.settleWake?.(Boolean(error.response));
 
     if (
       error.response &&
