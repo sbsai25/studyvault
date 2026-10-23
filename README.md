@@ -378,7 +378,7 @@ You don't need to enable pgvector by hand: every deploy runs `migrate_db`, which
 
 ### 2. API on Render
 
-1. If your Neon region isn't US West, change `region` in `render.yaml` to the closest Render region first, and commit it.
+1. If your Neon region isn't US West, change `region` in `render.yaml` to the closest Render region first, and commit it. Render can't change a service's region after it is created, so `region` must keep matching the existing service afterwards, or every Blueprint sync fails.
 2. **New → Blueprint**, connect this repository. Render reads `render.yaml`: it builds the root `Dockerfile` on a free instance and uses `/livez` as the health check. `/livez` only confirms the server is up and doesn't query the database, so a sleeping Neon database that is slow to wake doesn't fail Render's 5-second check and get the instance restarted. The container runs `python -m backend.migrate_db` (additive only) and then starts uvicorn on `$PORT`.
 3. Fill in the variables it asks for:
 
@@ -423,6 +423,7 @@ Never set `TEST_DATABASE_URL` or `ALLOW_TEST_DB_RESET` on Render, and never run 
 | Browser console shows a CORS error | `CORS_ORIGINS` doesn't exactly match the Vercel origin (scheme, no trailing slash) |
 | Frontend calls `127.0.0.1:8000` | `VITE_API_BASE_URL` wasn't set when Vercel built it; set it and redeploy |
 | The first request takes about a minute | The free Render instance was asleep; later requests are fast |
+| Email from Render: "A sync failed for your Blueprint" | Open the Blueprint's **Syncs** page for the error. `changing region not supported` means `region` in `render.yaml` doesn't match the service's region |
 | Deploy fails its health check | Check the deploy logs: `DATABASE_URL` missing or wrong, or migrations failed |
 | Email from Render: "HTTP health check failed (timed out after 5 seconds)" | The instance stopped answering and Render restarted it. Check the service's health check path is `/livez`, not `/health` (under **Settings → Health Checks**; older setups used `/health`, which waits on the database) |
 | `extension "vector" is not available` | pgvector isn't installed on that PostgreSQL server (see [Installation](#installation)) |
