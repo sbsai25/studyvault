@@ -1,7 +1,12 @@
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.models.base import Base
+
+# Gemini embeddings are requested at this size (768 is one of its recommended
+# sizes; a quarter of the 3072 default, to fit a small free database)
+EMBEDDING_DIMENSIONS = 768
 
 
 class Chunk(Base):
@@ -28,3 +33,8 @@ class Chunk(Base):
         nullable=True,
     )
     chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    # pgvector column; NULL for chunks stored before vectors moved into Postgres
+    embedding: Mapped[list[float] | None] = mapped_column(
+        Vector(EMBEDDING_DIMENSIONS),
+        nullable=True,
+    )

@@ -6,7 +6,8 @@
 
 services:
   db:
-    image: postgres:16
+    # PostgreSQL 16 with the pgvector extension (chunk embeddings)
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: studyvault
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-studyvault}
@@ -38,7 +39,6 @@ services:
       - "8000:8000"
     volumes:
       - uploads:/data/uploads
-      - chroma:/data/chroma
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 10s
@@ -48,4 +48,3 @@ services:
 volumes:
   pgdata:
   uploads:
-  chroma:

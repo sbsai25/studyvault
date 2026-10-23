@@ -14,10 +14,10 @@ def setup_test_user():
     res = client.post("/auth/login", json={"email": email, "password": password})
     return res.json()["access_token"]
 
-@patch("backend.services.rag.get_embedding")
-def test_upload_and_delete_document(mock_get_embedding, tmp_path):
-    # Mock the embedding generation to return a dummy vector matching gemini-embedding-2 dimensions
-    mock_get_embedding.return_value = [0.1] * 3072
+@patch("backend.services.rag.get_embeddings")
+def test_upload_and_delete_document(mock_get_embeddings, tmp_path):
+    # Mock the embedding generation to return dummy vectors matching EMBEDDING_DIMENSIONS
+    mock_get_embeddings.side_effect = lambda texts: [[0.1] * 768 for _ in texts]
     
     token = setup_test_user()
     headers = {"Authorization": f"Bearer {token}"}
@@ -55,9 +55,9 @@ def test_upload_and_delete_document(mock_get_embedding, tmp_path):
     assert len(list_res2.json()) == 0
 
 
-@patch("backend.services.rag.get_embedding")
-def test_upload_filename_cannot_escape_upload_dir(mock_get_embedding):
-    mock_get_embedding.return_value = [0.1] * 3072
+@patch("backend.services.rag.get_embeddings")
+def test_upload_filename_cannot_escape_upload_dir(mock_get_embeddings):
+    mock_get_embeddings.side_effect = lambda texts: [[0.1] * 768 for _ in texts]
 
     token = setup_test_user()
     headers = {"Authorization": f"Bearer {token}"}
@@ -176,9 +176,9 @@ def test_upload_corrupt_pdf_is_rejected_and_cleaned_up():
     assert _rows_for(user_id) == (0, 0)
 
 
-@patch("backend.services.rag.get_embedding")
-def test_upload_embedding_failure_returns_502_and_cleans_up(mock_get_embedding):
-    mock_get_embedding.side_effect = AIServiceError("quota exceeded for key AIza-secret")
+@patch("backend.services.rag.get_embeddings")
+def test_upload_embedding_failure_returns_502_and_cleans_up(mock_get_embeddings):
+    mock_get_embeddings.side_effect = AIServiceError("quota exceeded for key AIza-secret")
     headers, user_id = _auth()
     before = _uploaded_files()
 
@@ -190,26 +190,23 @@ def test_upload_embedding_failure_returns_502_and_cleans_up(mock_get_embedding):
     assert _rows_for(user_id) == (0, 0)
 
 
-@patch("backend.routers.documents.delete_document_chunks_from_vector_store")
-@patch("backend.routers.documents.add_chunks_to_vector_store")
-def test_upload_unexpected_error_still_cleans_up(mock_add, mock_delete_vectors):
-    mock_add.side_effect = RuntimeError("chroma exploded")
-    # Even if one cleanup step fails, the others still run and the original error wins
-    mock_delete_vectors.side_effect = RuntimeError("chroma still exploded")
+@patch("backend.routers.documents.embed_chunks")
+def test_upload_unexpected_error_still_cleans_up(mock_embed):
+    mock_embed.side_effect = RuntimeError("vector store exploded")
     headers, user_id = _auth()
     before = _uploaded_files()
 
     res = _upload(headers, "notes.md", b"# Cells\nThe mitochondria is the powerhouse of the cell.")
 
     assert res.status_code == 500
-    assert "chroma" not in res.json()["detail"]
+    assert "exploded" not in res.json()["detail"]
     assert _uploaded_files() == before
     assert _rows_for(user_id) == (0, 0)
 
 
-@patch("backend.services.rag.get_embedding")
-def test_document_list_includes_type_and_chunk_count(mock_get_embedding):
-    mock_get_embedding.return_value = [0.1] * 3072
+@patch("backend.services.rag.get_embeddings")
+def test_document_list_includes_type_and_chunk_count(mock_get_embeddings):
+    mock_get_embeddings.side_effect = lambda texts: [[0.1] * 768 for _ in texts]
     headers, _ = _auth()
 
     first = _upload(headers, "first.txt", b"Short note one.").json()["document_id"]

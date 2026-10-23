@@ -5,11 +5,13 @@ import re
 import time
 from typing import List
 
-import chromadb
 from dotenv import load_dotenv
 from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types
+from sqlalchemy.orm import Session
+
+from backend.models.chunk import EMBEDDING_DIMENSIONS, Chunk
 
 load_dotenv()
 
@@ -22,18 +24,6 @@ EMBEDDING_MODEL = "gemini-embedding-2"
 # Initialize Gemini
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-# Initialize ChromaDB
-CHROMA_PATH = os.getenv("CHROMA_PATH") or os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    ".chroma"
-)
-
-chroma_client = chromadb.PersistentClient(path=CHROMA_PATH)
-
-collection = chroma_client.get_or_create_collection(
-    name="studyvault_chunks"
-)
-
 
 class AIServiceError(Exception):
     """Raised when a Gemini call fails or returns unusable output.
@@ -44,6 +34,9 @@ class AIServiceError(Exception):
 
 GEMINI_ATTEMPTS = 3
 GEMINI_RETRY_BASE_SECONDS = 1.0  # waits 1s, then 2s
+# A per-minute quota tells us how long until it resets (e.g. "32s"); wait that
+# long if it's at most this, so large uploads get through on the free tier
+MAX_QUOTA_WAIT_SECONDS = 60
 
 
 def _is_transient(error: Exception) -> bool:
@@ -51,6 +44,24 @@ def _is_transient(error: Exception) -> bool:
     return isinstance(error, genai_errors.ServerError) or (
         isinstance(error, genai_errors.APIError) and error.code == 429
     )
+
+
+def _quota_retry_delay(error: Exception) -> float | None:
+    """The wait a 429 asks for, or infinity for a daily quota; None if unknown."""
+    body = getattr(error, "details", None)
+    if getattr(error, "code", None) != 429 or not isinstance(body, dict):
+        return None
+    delay = None
+    for detail in body.get("error", {}).get("details", []):
+        for violation in detail.get("violations", []):
+            if "PerDay" in violation.get("quotaId", ""):
+                return float("inf")  # resets at midnight Pacific; waiting won't help
+        if detail.get("@type", "").endswith("RetryInfo"):
+            try:
+                delay = float(detail.get("retryDelay", "").rstrip("s"))
+            except ValueError:
+                pass
+    return delay
 
 
 def _call_gemini(fn, **kwargs):
@@ -62,70 +73,56 @@ def _call_gemini(fn, **kwargs):
             if attempt == GEMINI_ATTEMPTS or not _is_transient(e):
                 raise
             delay = GEMINI_RETRY_BASE_SECONDS * 2 ** (attempt - 1)
+            requested = _quota_retry_delay(e)
+            if requested is not None:
+                if requested > MAX_QUOTA_WAIT_SECONDS:
+                    raise
+                delay = max(delay, requested)
             logger.warning("Gemini call failed (%s), retrying in %.0fs (attempt %d/%d)",
                            getattr(e, "code", type(e).__name__), delay, attempt, GEMINI_ATTEMPTS)
             time.sleep(delay)
 
 
-def get_embedding(text: str) -> List[float]:
-    """Generate an embedding for the given text using Gemini."""
-    try:
-        result = _call_gemini(
-            client.models.embed_content,
-            model=EMBEDDING_MODEL,
-            contents=text,
-            config=types.EmbedContentConfig(
-                task_type="RETRIEVAL_DOCUMENT"
-            ),
-        )
-        return result.embeddings[0].values
-    except Exception as e:
-        raise AIServiceError(f"Embedding request failed: {e}") from e
+# Texts sent per embedding request (the API's batch limit), so a large
+# document takes a few requests instead of one per chunk
+EMBED_BATCH_SIZE = 100
 
 
-def add_chunks_to_vector_store(chunks: List[dict]):
-    """
-    Adds chunks to ChromaDB.
-
-    Expected chunk format:
-    {
-        "id": "chunk_id",
-        "text": "content",
-        "metadata": {
-            "user_id": 1,
-            "document_id": 1,
-            "chunk_index": 0
-        }
-    }
-    """
-
-    if not chunks:
-        return
-
-    ids = []
-    documents = []
+def get_embeddings(texts: List[str]) -> List[List[float]]:
+    """Generate document embeddings for the given texts using Gemini, in order."""
     embeddings = []
-    metadatas = []
+    for start in range(0, len(texts), EMBED_BATCH_SIZE):
+        batch = texts[start:start + EMBED_BATCH_SIZE]
+        try:
+            result = _call_gemini(
+                client.models.embed_content,
+                model=EMBEDDING_MODEL,
+                # One Content per text: gemini-embedding-2 merges a plain list
+                # of strings into a single embedding
+                contents=[types.Content(parts=[types.Part(text=t)]) for t in batch],
+                config=types.EmbedContentConfig(
+                    task_type="RETRIEVAL_DOCUMENT",
+                    output_dimensionality=EMBEDDING_DIMENSIONS,
+                ),
+            )
+            values = [e.values for e in result.embeddings]
+        except Exception as e:
+            raise AIServiceError(f"Embedding request failed: {e}") from e
+        if len(values) != len(batch):
+            raise AIServiceError(f"Expected {len(batch)} embeddings, got {len(values)}")
+        embeddings.extend(values)
+    return embeddings
 
-    for c in chunks:
-        ids.append(str(c["id"]))
-        documents.append(c["text"])
-        embeddings.append(get_embedding(c["text"]))
-        metadatas.append(c["metadata"])
 
-    collection.add(
-        ids=ids,
-        documents=documents,
-        embeddings=embeddings,
-        metadatas=metadatas
-    )
+def embed_chunks(chunks: List[Chunk]):
+    """Embeds each chunk's content and stores the vector on the row.
 
-
-def delete_document_chunks_from_vector_store(document_id: int):
+    The caller adds the rows to the session and commits.
     """
-    Deletes all chunks associated with a document ID from ChromaDB.
-    """
-    collection.delete(where={"document_id": document_id})
+    vectors = get_embeddings([c.content for c in chunks])
+    for c, vector in zip(chunks, vectors):
+        c.embedding = vector
+
 
 def get_query_embedding(query: str) -> List[float]:
     """Generate an embedding for a search query using Gemini."""
@@ -135,7 +132,8 @@ def get_query_embedding(query: str) -> List[float]:
             model=EMBEDDING_MODEL,
             contents=query,
             config=types.EmbedContentConfig(
-                task_type="RETRIEVAL_QUERY"
+                task_type="RETRIEVAL_QUERY",
+                output_dimensionality=EMBEDDING_DIMENSIONS,
             ),
         )
         return result.embeddings[0].values
@@ -146,39 +144,38 @@ def get_query_embedding(query: str) -> List[float]:
 def search_chunks(
     query: str,
     user_id: int,
+    db: Session,
     top_k: int = 4,
     document_id: int | None = None,
 ) -> List[dict]:
     """
     Searches for the most relevant chunks for a query,
     scoped to the user and optionally to one of their documents.
+
+    Exact cosine-distance search (no vector index): each user's chunks are
+    few enough that scanning them is fast.
     """
 
     query_embedding = get_query_embedding(query)
 
-    # Metadata is stored as ints (see documents.py), so filter with ints
-    if document_id is None:
-        where = {"user_id": user_id}
-    else:
-        where = {"$and": [{"user_id": user_id}, {"document_id": document_id}]}
+    q = db.query(Chunk).filter(Chunk.user_id == user_id, Chunk.embedding.isnot(None))
+    if document_id is not None:
+        q = q.filter(Chunk.document_id == document_id)
 
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=top_k,
-        where=where
-    )
+    rows = q.order_by(Chunk.embedding.cosine_distance(query_embedding)).limit(top_k).all()
 
-    chunks = []
-
-    if results["documents"] and results["documents"][0]:
-        for idx in range(len(results["documents"][0])):
-            chunks.append({
-                "id": results["ids"][0][idx],
-                "text": results["documents"][0][idx],
-                "metadata": results["metadatas"][0][idx]
-            })
-
-    return chunks
+    return [
+        {
+            "id": str(c.id),
+            "text": c.content,
+            "metadata": {
+                "user_id": c.user_id,
+                "document_id": c.document_id,
+                "chunk_index": c.chunk_index,
+            },
+        }
+        for c in rows
+    ]
 
 
 HISTORY_MESSAGE_CHARS = 2000

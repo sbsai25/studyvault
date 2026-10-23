@@ -16,11 +16,7 @@ from backend.models.document import Document
 from backend.models.chunk import Chunk
 from backend.services import activity
 from backend.services.activity import log_activity
-from backend.services.rag import (
-    AIServiceError,
-    add_chunks_to_vector_store,
-    delete_document_chunks_from_vector_store,
-)
+from backend.services.rag import AIServiceError, embed_chunks
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -87,10 +83,7 @@ def _cleanup_failed_upload(db: Session, document_id: int | None, file_path: str)
         logger.exception("Rollback failed while cleaning up upload")
 
     if document_id is not None:
-        try:
-            delete_document_chunks_from_vector_store(document_id)
-        except Exception:
-            logger.exception("Could not remove vectors for document %s", document_id)
+        # Deleting the document row cascades to its chunks and their vectors
         try:
             doc = db.query(Document).filter(Document.id == document_id).first()
             if doc:
@@ -168,7 +161,7 @@ async def upload_document(
         if not texts:
             raise UnreadableDocumentError("No text could be extracted")
 
-        # Save chunks to DB
+        # Embed the chunks, then save them with their vectors
         db_chunks = [
             Chunk(
                 document_id=db_doc.id,
@@ -178,27 +171,12 @@ async def upload_document(
             )
             for idx, chunk_text in enumerate(texts)
         ]
+        embed_chunks(db_chunks)
         db.add_all(db_chunks)
-        db.commit()
-
-        # Generate embeddings and add to vector store
-        vector_chunks = []
-        for c in db_chunks:
-            db.refresh(c)
-            vector_chunks.append({
-                "id": str(c.id),
-                "text": c.content,
-                "metadata": {
-                    "user_id": user.id,
-                    "document_id": db_doc.id,
-                    "chunk_index": c.chunk_index
-                }
-            })
-        add_chunks_to_vector_store(vector_chunks)
 
         log_activity(db, user.id, activity.DOCUMENT_UPLOADED, db_doc.id, {
             "filename": original_name,
-            "chunks": len(vector_chunks),
+            "chunks": len(db_chunks),
         })
         db.commit()
 
@@ -214,7 +192,7 @@ async def upload_document(
         _cleanup_failed_upload(db, document_id, file_path)
         raise HTTPException(status_code=500, detail="Failed to process the uploaded document")
 
-    return {"message": "Document uploaded and processed successfully", "document_id": db_doc.id, "chunks_count": len(vector_chunks)}
+    return {"message": "Document uploaded and processed successfully", "document_id": db_doc.id, "chunks_count": len(db_chunks)}
 
 @router.get("/")
 def get_documents(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -247,13 +225,10 @@ def delete_document(document_id: int, user: User = Depends(get_current_user), db
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    # Delete from ChromaDB
-    delete_document_chunks_from_vector_store(document_id)
-
     # Remove file from disk
     _remove_file(doc.upload_path)
 
-    # Delete from the database (cascade handles chunks, flashcard sets and fill-in-the-blank sets)
+    # Delete from the database (cascade handles chunks and their vectors, flashcard sets and fill-in-the-blank sets)
     db.delete(doc)
     db.commit()
 

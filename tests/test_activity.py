@@ -90,7 +90,7 @@ def test_compute_streaks(active, expected):
 
 # --- Activity is logged with the action ------------------------------------
 
-@patch("backend.services.rag.get_embedding", return_value=[0.1] * 3072)
+@patch("backend.services.rag.get_embeddings", side_effect=lambda texts: [[0.1] * 768 for _ in texts])
 def test_upload_logs_activity(_embed, user):
     res = client.post("/documents/upload", files={"file": ("bio.txt", b"Cells are small.", "text/plain")})
     assert res.status_code == 200
@@ -101,7 +101,7 @@ def test_upload_logs_activity(_embed, user):
     assert event.metadata_data == {"filename": "bio.txt", "chunks": 1}
 
 
-@patch("backend.services.rag.get_embedding", side_effect=AIServiceError("down"))
+@patch("backend.services.rag.get_embeddings", side_effect=AIServiceError("down"))
 def test_failed_upload_logs_nothing(_embed, user):
     res = client.post("/documents/upload", files={"file": ("bio.txt", b"Cells are small.", "text/plain")})
     assert res.status_code == 502

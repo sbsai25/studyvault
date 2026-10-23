@@ -3,8 +3,7 @@ FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    UPLOAD_DIR=/data/uploads \
-    CHROMA_PATH=/data/chroma
+    UPLOAD_DIR=/data/uploads
 
 WORKDIR /app
 
@@ -13,15 +12,17 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend ./backend
 
-# Run as a non-root user; uploads and the vector store live on volumes under /data
+# Run as a non-root user. Uploaded files are only read once, to extract their
+# text, so /data/uploads doesn't need to outlive the container; all lasting
+# data (including the chunk vectors) is in PostgreSQL.
 RUN useradd --create-home appuser \
-    && mkdir -p /data/uploads /data/chroma \
+    && mkdir -p /data/uploads \
     && chown -R appuser:appuser /data
 USER appuser
 
 EXPOSE 8000
 
-# Apply additive migrations, then serve on $PORT (set by Railway; 8000
+# Apply additive migrations, then serve on $PORT (set by the host; 8000
 # otherwise). --proxy-headers lets the rate limiter see real client IPs
 # behind a reverse proxy; uvicorn trusts the proxies listed in the
 # FORWARDED_ALLOW_IPS env var (default 127.0.0.1).

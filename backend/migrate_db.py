@@ -1,9 +1,10 @@
 from sqlalchemy import text
-from backend.database import engine
+from backend.database import create_vector_extension, engine
 from backend.models.base import Base
 
 # Import all models to ensure they are registered with Base.metadata
 import backend.models  # noqa: F401
+from backend.models.chunk import EMBEDDING_DIMENSIONS
 
 # Columns added to tables that already existed in older databases.
 # create_all() only creates missing tables, so each new column on an existing
@@ -16,6 +17,7 @@ ADDED_COLUMNS = [
     ("flashcard_progress", "ease_factor", "DOUBLE PRECISION NOT NULL DEFAULT 2.5"),
     ("flashcard_progress", "interval_days", "DOUBLE PRECISION NOT NULL DEFAULT 0"),
     ("flashcard_progress", "repetitions", "INTEGER NOT NULL DEFAULT 0"),
+    ("chunks", "embedding", f"vector({EMBEDDING_DIMENSIONS})"),
 ]
 
 
@@ -33,6 +35,10 @@ def _column_exists(conn, table: str, column: str) -> bool:
 
 def safe_migrate():
     print("Starting safe migration...")
+
+    print("Enabling the pgvector extension...")
+    with engine.begin() as conn:
+        create_vector_extension(conn)
 
     # Create missing tables first; a newly created table already has every
     # column, so the ALTERs below are skipped for it.

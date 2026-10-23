@@ -1,7 +1,7 @@
 import os
 
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 load_dotenv()
@@ -27,7 +27,14 @@ if not DATABASE_URL:
 
 DATABASE_URL = normalize_database_url(DATABASE_URL)
 
-engine = create_engine(DATABASE_URL)
+# Serverless Postgres (e.g. Neon) drops idle connections when it scales to
+# zero, so check each pooled connection before handing it out
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+
+
+def create_vector_extension(conn):
+    """Enables pgvector (chunk embeddings); needed before creating tables."""
+    conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
 
 SessionLocal = sessionmaker(
     autocommit=False,

@@ -11,6 +11,7 @@ python-dotenv==1.2.2
 # Database
 SQLAlchemy==2.0.52
 psycopg[binary]==3.3.4
+pgvector==0.5.0
 
 # Auth
 PyJWT==2.13.0
@@ -18,7 +19,6 @@ pwdlib[argon2]==0.3.1
 
 # RAG / AI
 google-genai==2.19.0
-chromadb==1.5.9
 langchain-text-splitters==1.1.2
 
 # Document parsing

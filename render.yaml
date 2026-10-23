@@ -1,0 +1,23 @@
+# Render Blueprint for the StudyVault API (free instance).
+# PostgreSQL is hosted on Neon, not Render: Render's free database expires
+# after 30 days. See "Deployment" in README.md.
+services:
+  - type: web
+    name: studyvault-api
+    runtime: docker
+    plan: free
+    # Pick the Render region closest to your Neon database's region
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false # Neon connection string, entered in the dashboard
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false # the Vercel URL, no trailing slash
+      - key: FORWARDED_ALLOW_IPS
+        value: "*"

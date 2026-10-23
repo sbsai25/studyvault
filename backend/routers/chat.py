@@ -98,7 +98,7 @@ def chat_query(
     last_user_question = next((m["content"] for m in reversed(history) if m["role"] == "user"), None)
     retrieval_query = f"{last_user_question}\n{request.query}" if last_user_question else request.query
 
-    chunks = search_chunks(retrieval_query, user_id=user.id, top_k=4, document_id=request.document_id)
+    chunks = search_chunks(retrieval_query, user_id=user.id, db=db, top_k=4, document_id=request.document_id)
     if chunks:
         answer = generate_answer(request.query, chunks, history)
     else:

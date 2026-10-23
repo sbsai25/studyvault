@@ -1,8 +1,9 @@
-"""Test configuration: point the app at a disposable test database and
-temporary Chroma/upload directories BEFORE any backend module is imported.
+"""Test configuration: point the app at a disposable test database and a
+temporary upload directory BEFORE any backend module is imported.
 
-backend.database reads DATABASE_URL and backend.services.rag opens ChromaDB
-at import time, so this has to happen at module level, not in a fixture.
+backend.database reads DATABASE_URL and backend.routers.documents creates
+UPLOAD_DIR at import time, so this has to happen at module level, not in a
+fixture.
 """
 import gc
 import os
@@ -37,14 +38,13 @@ if os.getenv("ALLOW_TEST_DB_RESET") != "1":
     )
 
 os.environ["DATABASE_URL"] = _test_url
-os.environ["CHROMA_PATH"] = tempfile.mkdtemp(prefix="studyvault_chroma_")
 os.environ["UPLOAD_DIR"] = tempfile.mkdtemp(prefix="studyvault_uploads_")
 
 import pytest  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
 import backend.models  # noqa: E402,F401  (registers every model on Base.metadata)
-from backend.database import engine  # noqa: E402
+from backend.database import create_vector_extension, engine  # noqa: E402
 from backend.models.base import Base  # noqa: E402
 
 
@@ -58,6 +58,8 @@ def _fresh_schema():
     with engine.begin() as conn:
         conn.execute(text("DROP SCHEMA public CASCADE"))
         conn.execute(text("CREATE SCHEMA public"))
+        # Dropping the schema also dropped pgvector's types
+        create_vector_extension(conn)
     Base.metadata.create_all(bind=engine)
     yield
 
