@@ -1,6 +1,6 @@
 # StudyVault
 
-An AI study assistant: upload your notes, ask questions about them, and turn them into flashcards and fill-in-the-blank exercises. Built with a FastAPI + PostgreSQL backend, a ChromaDB vector store, Google Gemini, and a React frontend.
+An AI study assistant: upload your notes, ask questions about them, and turn them into flashcards and fill-in-the-blank exercises. Built with a FastAPI + PostgreSQL (pgvector) backend, Google Gemini, and a React frontend.
 
 ## Overview
 
@@ -17,8 +17,8 @@ Each user has their own account. Documents, retrieval results, chats, and study 
 
 - Email/password registration and login with JWT access tokens and single-use, revocable refresh tokens
 - Rate limiting on login, registration, and token refresh
-- Document upload with text extraction from **PDF, TXT, Markdown, DOCX, and PPTX**, a configurable size limit, and full cleanup if processing fails. The current UI file picker accepts PDF and TXT.
-- Text chunking, Gemini embeddings, and per-user vector search in ChromaDB
+- Document upload with text extraction from **PDF, TXT, Markdown, DOCX, and PPTX**, a configurable size limit, and full cleanup if processing fails
+- Text chunking, Gemini embeddings, and per-user vector search in PostgreSQL with pgvector
 - Document Q&A with sources (file name and a snippet of each passage), saved with the conversation
 - Multi-turn chat (the last 6 messages are sent as context) and optional chat with a single document
 - Persistent chat conversations with AI-generated titles; list, rename, and delete them
@@ -29,7 +29,7 @@ Each user has their own account. Documents, retrieval results, chats, and study 
 - Fill-in-the-blank exercises with forgiving answer matching and accepted alternatives
 - Activity log and a stats endpoint (counts, cards due, reviews this week, averages, streaks)
 - Automatic retries when Gemini is briefly overloaded; a generic error message if it still fails
-- Backend test suite (pytest, 111 tests) that runs against a separate test database
+- Backend test suite (pytest, 121 tests) that runs against a separate test database
 
 ## AI/RAG Pipeline
 
@@ -42,18 +42,17 @@ Text extraction (pypdf / python-docx / python-pptx / plain text)
         ↓
 Chunking: RecursiveCharacterTextSplitter (1000 chars, 200 overlap)
         ↓
-Chunks saved to PostgreSQL
+Embeddings: Gemini `gemini-embedding-2`, 768 dimensions (task type RETRIEVAL_DOCUMENT),
+  sent in batches of up to 100 chunks per request
         ↓
-Embeddings: Gemini `gemini-embedding-2` (task type RETRIEVAL_DOCUMENT)
-        ↓
-ChromaDB persistent collection, with metadata {user_id, document_id, chunk_index}
+Chunks saved to PostgreSQL, each with its vector in a pgvector `embedding` column
 
 User asks a question (optionally limited to one document)
         ↓
-Query embedding: `gemini-embedding-2` (task type RETRIEVAL_QUERY)
+Query embedding: `gemini-embedding-2`, 768 dimensions (task type RETRIEVAL_QUERY)
   (for follow-ups, the previous question is included in the search text)
         ↓
-ChromaDB similarity search: top 4 chunks, filtered to the current user
+pgvector cosine-distance search: top 4 chunks, filtered to the current user
   (and to the chosen document, if any)
         ↓
 Gemini (`GEMINI_MODEL`, default `gemini-3.5-flash-lite`) answers using the retrieved context,
@@ -64,7 +63,7 @@ Answer + sources (file name, chunk index, snippet), saved to the conversation
 
 If the retrieved context doesn't contain the answer, the prompt tells the model to say it couldn't find the answer in the uploaded materials. If nothing relevant is retrieved at all, the API replies with that message without calling Gemini.
 
-Gemini calls that fail with a temporary error (5xx "high demand", or 429) are retried up to 3 times with a 1s, then 2s, wait. If they still fail, the API returns `502` with a generic message; the provider's error is only written to the server log.
+Gemini calls that fail with a temporary error (5xx "high demand", or 429) are tried up to 3 times, waiting 1s, then 2s. When a 429 comes from a per-minute quota and says how long until it resets (up to 60s), the API waits that long instead. This lets a large upload get past the free tier's embedding limit (100 chunks a minute), at the cost of a slower upload. A per-day quota is not retried. If a call still fails, the API returns `502` with a generic message; the provider's error is only written to the server log.
 
 Implementation: [`backend/services/rag.py`](backend/services/rag.py), [`backend/routers/documents.py`](backend/routers/documents.py), [`backend/routers/chat.py`](backend/routers/chat.py)
 
@@ -92,8 +91,7 @@ flowchart LR
         RAG["services/rag.py"]
     end
 
-    PG[("PostgreSQL<br/>users · documents · chunks · conversations<br/>flashcards · fill-blanks<br/>activities · refresh_tokens")]
-    CH[("ChromaDB<br/>persistent vector store")]
+    PG[("PostgreSQL + pgvector<br/>users · documents · chunks + vectors<br/>conversations · flashcards · fill-blanks<br/>activities · refresh_tokens")]
     FS[["uploads/<br/>original files"]]
     GEM["Google Gemini<br/>embeddings + generation"]
 
@@ -102,7 +100,7 @@ flowchart LR
     AUTH & DOCS & CHAT & TOOLS & CARDS & PRACTICE & STATS --> PG
     DOCS --> FS
     DOCS & CHAT & TOOLS --> RAG
-    RAG --> CH
+    RAG --> PG
     RAG --> GEM
 ```
 
@@ -111,10 +109,28 @@ flowchart LR
 | **Frontend** | React 19 SPA built with Vite and React Router. `AuthContext` holds the logged-in user, `ProtectedRoute` guards pages, and an Axios client attaches the access token and refreshes it on `401` (one shared refresh call even when several requests fail at once, since refresh tokens are single-use). `src/api/client.js` has a helper for every API endpoint. Assistant answers render as Markdown (`react-markdown`). |
 | **Backend** | FastAPI app (`backend/main.py`) with routers for `auth`, `documents`, `chat`, `tools`, `flashcards`, `fill-blanks`, and `activity`/`stats`. CORS origins come from `CORS_ORIGINS` (default: the Vite dev server). |
 | **Database** | PostgreSQL via SQLAlchemy 2.0 ORM and the psycopg 3 driver. Tables: users, documents, chunks, conversations, messages, flashcard_sets, flashcards, flashcard_progress, fill_blank_sets, fill_blank_questions, fill_blank_attempts, activities, refresh_tokens. |
-| **Vector database** | ChromaDB `PersistentClient` stored in `.chroma/` (or `CHROMA_PATH`), with one collection (`studyvault_chunks`). Every query is filtered by `user_id`, and optionally by `document_id`. |
+| **Vector search** | The [pgvector](https://github.com/pgvector/pgvector) extension in the same PostgreSQL database: each row of `chunks` stores its 768-dimension embedding. Search is an exact cosine-distance query (no vector index; each user's chunks are few), always filtered by `user_id`, and optionally by `document_id`. |
 | **AI/LLM layer** | Google Gemini via the `google-genai` SDK: `gemini-embedding-2` for embeddings and `GEMINI_MODEL` (default `gemini-3.5-flash-lite`) for answers, chat titles, flashcards, and fill-in-the-blanks. Study material uses JSON output mode (`response_mime_type="application/json"`), and each generated item is validated before it is saved. |
 | **Authentication** | Argon2 password hashing (`pwdlib`), HS256 JWTs (`PyJWT`), and refresh tokens tracked in the database. See [Authentication](#authentication). |
-| **Document pipeline** | Upload → check type and size → save to disk under a generated unique name (the original filename is kept only for display) → extract text → chunk → store chunks in PostgreSQL → embed → store in ChromaDB. If any step fails, the file, rows, and vectors are removed. Deleting a document removes its vectors, file, database rows, and the study material generated from it. |
+| **Document pipeline** | Upload → check type and size → save to disk under a generated unique name (the original filename is kept only for display) → extract text → chunk → embed → store chunks with their vectors in PostgreSQL. If any step fails, the file and rows are removed. Deleting a document removes its file, database rows (chunks and vectors included), and the study material generated from it. The file is only read during upload, so losing `uploads/` (for example on a host without a persistent disk) breaks nothing. |
+
+## Frontend
+
+A React 19 single-page app in `frontend/`, built with Vite. Its pages:
+
+| Page | Route | What it does |
+|---|---|---|
+| Dashboard | `/` | What to do next (decks due for review, or the latest conversation), this week's activity, recent documents and quick actions; an onboarding view before the first upload |
+| My Library | `/library` | Upload (drag and drop or picker; PDF, DOCX, PPTX, MD, TXT) and manage documents, and create flashcards or exercises from them |
+| AI Chat | `/chat` | Conversations with your documents, a conversation list, optional single-document chat, and sources under each answer |
+| Flashcards | `/flashcards` | Decks, a flip-card study session with Again / Hard / Good / Easy ratings, and a summary at the end |
+| Fill in the Blanks | `/fill-blanks` | Exercises, scored attempts and a review of each attempt |
+| Progress | `/progress` | Stat tiles, a 14-day activity chart, streaks and an activity feed |
+| Settings | `/settings` | Account details, the motion preference and sign-out |
+
+- **Design system:** colours, type, spacing, radii, shadows and motion timings are CSS custom properties in `src/styles/tokens.css`; components use CSS Modules. Shared building blocks (buttons, fields, dialogs, toasts, skeletons, empty and error states) live in `src/components/ui/`.
+- **Motion:** animations use [Motion](https://motion.dev) with shared presets in `src/motion/presets.js`. Settings offers *Match device*, *Reduce motion* and *Full motion*; with reduced motion only fades remain.
+- **Free-host cold starts:** if nothing has been heard from the API for 14 minutes and a request is still pending after 5 seconds, a "Waking up the server" notice appears until the request finishes (`onServerWaking` in `src/api/client.js`, shown by `components/layout/ServerWakeNotice.jsx`).
 
 ## Study material generation
 
@@ -188,10 +204,10 @@ sequenceDiagram
 
 | Area | Technologies |
 |---|---|
-| Frontend | React 19, Vite, React Router, Axios, react-markdown |
+| Frontend | React 19, Vite, React Router, Axios, Motion, lucide-react, react-markdown |
 | Backend | Python 3.12, FastAPI, Uvicorn, Pydantic |
 | Database | PostgreSQL, SQLAlchemy 2.0, psycopg 3 |
-| Vector store | ChromaDB |
+| Vector store | pgvector (PostgreSQL extension) |
 | AI | Google Gemini (`google-genai`): embeddings and text generation |
 | Document processing | pypdf, python-docx, python-pptx, langchain-text-splitters |
 | Auth | PyJWT, pwdlib (Argon2) |
@@ -221,23 +237,27 @@ studyvault/
 │   │   ├── fill_blanks.py # /fill-blanks: take, score, attempts
 │   │   └── activity.py    # /activity and /stats
 │   ├── services/
-│   │   ├── rag.py         # Gemini + ChromaDB: embed, store, search, generate (with retries)
+│   │   ├── rag.py         # Gemini + pgvector: embed, search, generate (with retries)
 │   │   └── activity.py    # log_activity()
 │   └── rate_limit.py      # In-memory rate limiter for auth routes
 ├── frontend/
 │   └── src/
 │       ├── api/client.js          # Axios instance, token refresh, API calls
 │       ├── context/AuthContext.jsx
-│       └── components/            # Dashboard, auth forms, flashcards/
+│       ├── pages/                 # One component per route (see Frontend)
+│       ├── components/            # ui/ building blocks, layout/, and one folder per feature
+│       ├── motion/                # Motion presets and the motion preference
+│       └── styles/tokens.css      # Design tokens
 ├── tests/                 # pytest suite (conftest.py points it at the test database)
 ├── docker/                # Postgres init script for Docker
 ├── Dockerfile
 ├── docker-compose.yml
+├── render.yaml            # Render Blueprint for the API (free instance)
 ├── requirements.txt
 └── .env.example
 ```
 
-Created at runtime (git-ignored): `uploads/` (uploaded files) and `.chroma/` (vector store). Both locations can be changed with `UPLOAD_DIR` and `CHROMA_PATH`.
+Created at runtime (git-ignored): `uploads/` (uploaded files). The location can be changed with `UPLOAD_DIR`.
 
 ## Installation
 
@@ -245,7 +265,7 @@ Created at runtime (git-ignored): `uploads/` (uploaded files) and `.chroma/` (ve
 
 - Python 3.12
 - Node.js and npm (a version supported by Vite 8)
-- PostgreSQL (a running server and an empty database)
+- PostgreSQL (a running server and an empty database) with the [pgvector](https://github.com/pgvector/pgvector#installation) extension installed. On Windows, pgvector is built from source with the Visual Studio C++ build tools (`nmake /F Makefile.win`, see its install guide). The app runs `CREATE EXTENSION IF NOT EXISTS vector` itself.
 - A Google Gemini API key
 
 ```bash
@@ -290,14 +310,13 @@ cp .env.example .env
 | `GEMINI_MODEL` | No | Gemini model for answers, titles, and study material (default `gemini-3.5-flash-lite`). Each model has its own free-tier quota, so switching models is a quick fix when one runs out. |
 | `CORS_ORIGINS` | No | Comma-separated allowed frontend origins (default `http://localhost:5173`) |
 | `MAX_UPLOAD_MB` | No | Maximum upload size in megabytes (default `20`) |
-| `CHROMA_PATH` | No | Where ChromaDB stores vectors (default `.chroma/` in the project root) |
 | `UPLOAD_DIR` | No | Where uploaded files are stored (default `uploads/` in the project root) |
-| `FORWARDED_ALLOW_IPS` | No | Proxies whose `X-Forwarded-For` uvicorn trusts (default `127.0.0.1`; `*` on Railway) |
+| `FORWARDED_ALLOW_IPS` | No | Proxies whose `X-Forwarded-For` uvicorn trusts (default `127.0.0.1`; `*` on Render) |
 | `VITE_API_BASE_URL` | No (frontend) | API URL baked into the frontend build (default `http://127.0.0.1:8000`) |
 
 `.env` is git-ignored. Never commit real values.
 
-> **Gemini quota:** free-tier keys have small per-minute and per-day limits for each model (for example 5 per minute and 20 per day on some models). Each chat message is one request (two for the first message of a conversation, which also generates a title), and each flashcard or fill-in-the-blank set is one. Past a limit, the API returns `502` until the limit resets; the backend log shows `429 RESOURCE_EXHAUSTED` with the quota that ran out. To keep going, set `GEMINI_MODEL` to another model and restart the API.
+> **Gemini quota:** free-tier keys have small per-minute and per-day limits for each model (for example 5 per minute and 20 per day on some models). Each chat message is one request (two for the first message of a conversation, which also generates a title), and each flashcard or fill-in-the-blank set is one. Embeddings are counted per chunk: on the free tier, `gemini-embedding-2` allows 100 chunks a minute, so an upload of more than 100 chunks (roughly 80,000 characters of text) waits for the limit to reset between batches. Past a limit, the API returns `502` until the limit resets; the backend log shows `429 RESOURCE_EXHAUSTED` with the quota that ran out. To keep going, set `GEMINI_MODEL` to another model and restart the API.
 
 ## Running Locally
 
@@ -331,7 +350,7 @@ psql -U postgres -c "CREATE DATABASE studyvault_test;"
 python -m pytest
 ```
 
-`tests/conftest.py` switches the app to `TEST_DATABASE_URL` before anything else loads, refuses to run if it doesn't look like a local `*_test` database or `ALLOW_TEST_DB_RESET` isn't `1`, and resets its tables at the start of each run. ChromaDB and uploads go to temporary folders. Gemini is mocked everywhere, except one test that runs the document filter against a real temporary ChromaDB with fake embeddings, so the suite needs no API key or network.
+`tests/conftest.py` switches the app to `TEST_DATABASE_URL` before anything else loads, refuses to run if it doesn't look like a local `*_test` database or `ALLOW_TEST_DB_RESET` isn't `1`, and resets its tables at the start of each run. Uploads go to a temporary folder. Gemini is mocked everywhere; the vector search tests run real pgvector queries in the test database with fake embeddings, so the suite needs no API key or network (but the test database needs pgvector).
 
 ### Running with Docker
 
@@ -340,52 +359,59 @@ python -m pytest
 docker compose up --build
 ```
 
-This starts PostgreSQL 16 (exposed on host port `5433`, so it doesn't clash with a local install) and the API on `http://localhost:8000`. The API container runs `migrate_db` on start, and uploads and vectors are kept in Docker volumes. A `studyvault_test` database is created on first start, so you can run the tests from your machine against it with `TEST_DATABASE_URL=postgresql+psycopg://studyvault:studyvault@localhost:5433/studyvault_test`.
+This starts PostgreSQL 16 with pgvector (the `pgvector/pgvector:pg16` image, exposed on host port `5433`, so it doesn't clash with a local install) and the API on `http://localhost:8000`. The API container runs `migrate_db` on start, and uploads are kept in a Docker volume. A `studyvault_test` database is created on first start, so you can run the tests from your machine against it with `TEST_DATABASE_URL=postgresql+psycopg://studyvault:studyvault@localhost:5433/studyvault_test`.
 
 > The Docker setup has not been tested yet: Docker wasn't available on the machine it was written on.
 
-## Deployment (Railway + Vercel)
+## Deployment (Render + Neon + Vercel, free)
 
-The API and PostgreSQL run on [Railway](https://railway.com), and the React app on [Vercel](https://vercel.com). `railway.json` and `frontend/vercel.json` hold the settings that can live in the repo; everything else is set in the two dashboards.
+The API runs on a free [Render](https://render.com) web service, PostgreSQL with pgvector on [Neon](https://neon.com)'s free plan, and the React app on [Vercel](https://vercel.com). All lasting data, vectors included, is in PostgreSQL, so the API needs no persistent disk. `render.yaml` and `frontend/vercel.json` hold the settings that can live in the repo; everything else is set in the dashboards.
 
-### 1. Backend and PostgreSQL on Railway
+### 1. PostgreSQL on Neon
 
-1. **New Project → Deploy from GitHub repo** and pick this repository. Railway reads `railway.json`: it builds the root `Dockerfile`, runs one replica, and uses `/health` as the health check. The container runs `python -m backend.migrate_db` (additive only) and then starts uvicorn on `$PORT`.
-2. **Add PostgreSQL:** in the project, choose **+ Create → Database → PostgreSQL**.
-3. **Add a volume** to the API service (right-click the service → **Attach volume**), mounted at **`/data`**. Uploaded files and ChromaDB both live there, so they survive redeploys.
-4. **Variables** on the API service:
+1. Create a Neon project. Pick the region closest to where the API will run (Render's regions are Oregon, Ohio, Virginia, Frankfurt and Singapore).
+2. Under **Connect**, turn **Connection pooling off** and copy the connection string (`postgresql://...neon.tech/neondb?sslmode=require...`). The direct connection is enough for a single API instance and avoids prepared-statement issues with the pooler.
+
+You don't need to enable pgvector by hand: every deploy runs `migrate_db`, which runs `CREATE EXTENSION IF NOT EXISTS vector` first.
+
+### 2. API on Render
+
+1. If your Neon region isn't US West, change `region` in `render.yaml` to the closest Render region first, and commit it.
+2. **New → Blueprint**, connect this repository. Render reads `render.yaml`: it builds the root `Dockerfile` on a free instance and uses `/health` as the health check. The container runs `python -m backend.migrate_db` (additive only) and then starts uvicorn on `$PORT`.
+3. Fill in the variables it asks for:
 
    | Variable | Value |
    |---|---|
-   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (the private network URL; `postgresql://` is accepted and switched to psycopg 3) |
-   | `SECRET_KEY` | a new random value: `python -c "import secrets; print(secrets.token_urlsafe(64))"`. Don't reuse the development one. |
+   | `DATABASE_URL` | the Neon connection string, as copied (`postgresql://` is accepted and switched to psycopg 3) |
    | `GEMINI_API_KEY` | your Gemini key (ideally a separate key/project from development, since free-tier quotas are shared per project) |
-   | `GEMINI_MODEL` | `gemini-3.5-flash-lite` (optional) |
-   | `CORS_ORIGINS` | the Vercel URL, e.g. `https://studyvault.vercel.app` (no trailing slash; comma-separate several) |
-   | `MAX_UPLOAD_MB` | `20` (optional) |
-   | `UPLOAD_DIR` | `/data/uploads` (already the image default) |
-   | `CHROMA_PATH` | `/data/chroma` (already the image default) |
-   | `FORWARDED_ALLOW_IPS` | `*`, so the rate limiter sees each client's IP instead of Railway's proxy |
-   | `RAILWAY_RUN_UID` | `0`. Railway mounts volumes as root, and the image otherwise runs as a non-root user that can't write to `/data`. |
+   | `CORS_ORIGINS` | the Vercel URL, e.g. `https://studyvault.vercel.app` (no trailing slash; comma-separate several). Fill it in after step 3 if you don't have it yet. |
 
-5. **Settings → Networking → Generate Domain** to get the public API URL, e.g. `https://studyvault-production.up.railway.app`. Check `https://<api-domain>/health` returns `{"status": "healthy"}`; it returns `503` if the database is unreachable.
+   `SECRET_KEY` is generated by Render and `FORWARDED_ALLOW_IPS` is set to `*` (so the rate limiter sees each client's IP instead of Render's proxy). `GEMINI_MODEL` and `MAX_UPLOAD_MB` can be added under **Environment** if needed.
+4. Once deployed, the API is at `https://<service-name>.onrender.com`. Check `https://<api-domain>/health` returns `{"status": "healthy"}`; it returns `503` if the database is unreachable.
 
-Never set `TEST_DATABASE_URL` or `ALLOW_TEST_DB_RESET` on Railway, and never run pytest or `init_db` against the production database.
+Never set `TEST_DATABASE_URL` or `ALLOW_TEST_DB_RESET` on Render, and never run pytest or `init_db` against the production database.
 
-### 2. Frontend on Vercel
+### 3. Frontend on Vercel
 
 1. **Add New → Project** and import this repository.
 2. **Root Directory:** `frontend`. **Framework preset:** Vite. **Build command:** `npm run build`. **Output directory:** `dist`.
-3. **Environment variable:** `VITE_API_BASE_URL` = the Railway API URL (no trailing slash). It is baked into the bundle at build time, so changing it needs a redeploy. Don't put secrets in `VITE_` variables; they are public.
-4. Deploy, then set `CORS_ORIGINS` on Railway to the Vercel production URL (Railway redeploys automatically). Vercel preview deployments get other URLs and are not allowed by CORS unless you add them.
+3. **Environment variable:** `VITE_API_BASE_URL` = the Render API URL (no trailing slash). It is baked into the bundle at build time, so changing it needs a redeploy. Don't put secrets in `VITE_` variables; they are public.
+4. Deploy, then set `CORS_ORIGINS` on Render to the Vercel production URL (saving it redeploys the API). Vercel preview deployments get other URLs and are not allowed by CORS unless you add them.
 
 `frontend/vercel.json` rewrites every path to `index.html`, so refreshing `/dashboard` works.
 
+### Free-tier behaviour
+
+- **Cold starts.** The Render instance sleeps after 15 minutes without requests, and the next request waits about a minute while it starts. Neon's database sleeps after 5 minutes and wakes in about a second; the API checks each pooled connection before using it, so a sleeping database doesn't cause errors.
+- **Don't keep it awake with an uptime pinger.** `/health` queries the database, so pinging it keeps Neon awake around the clock and uses up the free plan's monthly compute hours in a few weeks, after which the database is suspended until the next month.
+- **Storage.** Neon's free plan has 0.5 GB. A chunk (up to 1,000 characters plus a 768-number vector) takes roughly 4 KB, so that is in the order of 100,000 chunks.
+- Free-plan limits change; check Render's and Neon's pricing pages.
+
 ### Operating notes
 
-- **Run a single API instance.** ChromaDB is a local folder on the volume and rate limits are kept in memory, so several replicas would each see different data.
-- **A volume is not a backup.** PostgreSQL (Railway's Postgres service) and the files and vectors (the `/data` volume) are stored separately; back up both if the data matters.
-- **Migrations:** every deploy runs `migrate_db`, which creates missing tables and adds missing columns and never drops anything.
+- **Run a single API instance.** Rate limits are kept in memory, so several instances would each count separately.
+- **Backups:** all lasting data is in the Neon database. Back it up with `pg_dump` if it matters.
+- **Migrations:** every deploy runs `migrate_db`, which enables pgvector, creates missing tables and adds missing columns, and never drops anything.
 - **Existing sessions:** refresh tokens issued before rotation was added are rejected, so users log in again after the first deploy.
 
 ### Troubleshooting
@@ -394,11 +420,12 @@ Never set `TEST_DATABASE_URL` or `ALLOW_TEST_DB_RESET` on Railway, and never run
 |---|---|
 | Browser console shows a CORS error | `CORS_ORIGINS` doesn't exactly match the Vercel origin (scheme, no trailing slash) |
 | Frontend calls `127.0.0.1:8000` | `VITE_API_BASE_URL` wasn't set when Vercel built it; set it and redeploy |
+| The first request takes about a minute | The free Render instance was asleep; later requests are fast |
 | Deploy fails its health check | Check the deploy logs: `DATABASE_URL` missing or wrong, or migrations failed |
-| Uploads fail with `500`, log shows `PermissionError` on `/data` | `RAILWAY_RUN_UID=0` isn't set, or the volume isn't mounted at `/data` |
+| `extension "vector" is not available` | pgvector isn't installed on that PostgreSQL server (see [Installation](#installation)) |
 | Chat or generation returns `502` | Gemini quota or outage; the log shows the provider error (see the quota note above) |
 | Every user hits `429` together | `FORWARDED_ALLOW_IPS` isn't `*`, so all requests look like they come from the proxy |
-| Documents listed but chat finds nothing after a redeploy | No volume at `/data`, so ChromaDB was lost with the old container |
+| Chat finds nothing in a document uploaded before the move to pgvector | Its chunks have no vector (they were in ChromaDB); delete the document and upload it again |
 
 ## Screenshots
 
@@ -408,8 +435,8 @@ Never set `TEST_DATABASE_URL` or `ALLOW_TEST_DB_RESET` on Railway, and never run
 
 These are **not implemented yet**:
 
-- UI for the newer backend features: fill-in-the-blanks, attempt history, "due for review" views, a stats/progress page, a conversation history sidebar, per-document chat, and source snippets. The API and the `client.js` helpers already exist.
-- Enabling DOCX, PPTX, and Markdown in the upload file picker (the backend already parses them)
-- Background processing for large uploads (they are currently processed during the request)
+- Background processing for large uploads (they are currently processed during the request, which can take minutes on the free Gemini tier)
+- A dark theme
+- A vector index (HNSW) on `chunks.embedding` once there is enough data for exact search to be slow
 - A shared rate-limit store (e.g. Redis) so limits hold across several API workers
 - A proper migration tool (Alembic) instead of `migrate_db.py`
