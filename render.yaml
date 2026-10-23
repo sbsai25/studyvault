@@ -10,7 +10,7 @@ services:
     # can't change it after the service is created (a Blueprint sync that
     # tries fails with "changing region not supported"), so this must match
     # the existing service's region.
-    region: oregon
+    region: singapore
     dockerfilePath: ./Dockerfile
     # /livez doesn't query the database; /health does (see backend/main.py)
     healthCheckPath: /livez
