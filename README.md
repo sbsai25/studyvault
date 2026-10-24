@@ -128,10 +128,11 @@ A React 19 single-page app in `frontend/`, built with Vite. Its pages:
 | Flashcards | `/flashcards` | Decks, a flip-card study session with Again / Hard / Good / Easy ratings, and a summary at the end |
 | Fill in the Blanks | `/fill-blanks` | Exercises, scored attempts and a review of each attempt |
 | Progress | `/progress` | Stat tiles, a 14-day activity chart, streaks and an activity feed |
-| Settings | `/settings` | Account details, the motion preference and sign-out |
+| Settings | `/settings` | Account details, the theme and motion preferences, and sign-out |
 
 - **Design system:** colours, type, spacing, radii, shadows and motion timings are CSS custom properties in `src/styles/tokens.css`; components use CSS Modules. Shared building blocks (buttons, fields, dialogs, toasts, skeletons, empty and error states) live in `src/components/ui/`.
 - **Motion:** animations use [Motion](https://motion.dev) with shared presets in `src/motion/presets.js`. Settings offers *Match device*, *Reduce motion* and *Full motion*; with reduced motion only fades remain.
+- **Theme:** light and dark colour sets in `src/styles/tokens.css` (the dark one under `html[data-theme='dark']`). Settings offers *Match device*, *Light* and *Dark*, and the sun/moon button next to *Sign out* switches between them. An inline script in `index.html` applies the choice before the first paint.
 - **Free-host cold starts:** if nothing has been heard from the API for 14 minutes and a request is still pending after 5 seconds, a "Waking up the server" notice appears until the request finishes (`onServerWaking` in `src/api/client.js`, shown by `components/layout/ServerWakeNotice.jsx`).
 
 ## Study material generation
@@ -249,6 +250,7 @@ studyvault/
 │       ├── pages/                 # One component per route (see Frontend)
 │       ├── components/            # ui/ building blocks, layout/, and one folder per feature
 │       ├── motion/                # Motion presets and the motion preference
+│       ├── theme/                 # The light/dark theme preference
 │       └── styles/tokens.css      # Design tokens
 ├── tests/                 # pytest suite (conftest.py points it at the test database)
 ├── docker/                # Postgres init script for Docker
@@ -454,7 +456,6 @@ Never set `TEST_DATABASE_URL` or `ALLOW_TEST_DB_RESET` on Render, and never run 
 These are **not implemented yet**:
 
 - Background processing for large uploads (they are currently processed during the request, which can take minutes on the free Gemini tier)
-- A dark theme
 - A vector index (HNSW) on `chunks.embedding` once there is enough data for exact search to be slow
 - A shared rate-limit store (e.g. Redis) so limits hold across several API workers
 - A proper migration tool (Alembic) instead of `migrate_db.py`
