@@ -43,7 +43,7 @@
 }
 
 .invalid:focus-within {
-  box-shadow: 0 0 0 3px rgb(180 47 68 / 0.2);
+  box-shadow: 0 0 0 3px var(--color-danger-ring);
 }
 
 .input,

@@ -11,8 +11,8 @@
   z-index: calc(var(--z-toast) + 1);
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
-  background: var(--color-text);
-  color: var(--color-text-inverse);
+  background: var(--color-tooltip-bg);
+  color: var(--color-tooltip-text);
   font-weight: var(--weight-semibold);
   text-decoration: none;
   transform: translateY(-160%);
@@ -239,9 +239,9 @@
     z-index: var(--z-nav);
     padding: 6px 10px;
     border-radius: var(--radius-xs);
-    background: var(--color-text);
+    background: var(--color-tooltip-bg);
     box-shadow: var(--shadow-md);
-    color: var(--color-text-inverse);
+    color: var(--color-tooltip-text);
     font-size: var(--text-xs);
     font-weight: var(--weight-semibold);
     white-space: nowrap;
@@ -292,7 +292,7 @@
     height: var(--topbar-height);
     padding: 0 var(--space-1-5);
     border-bottom: 1px solid var(--color-border);
-    background: rgb(255 255 255 / 0.9);
+    background: var(--color-topbar-bg);
     backdrop-filter: blur(10px);
   }
 

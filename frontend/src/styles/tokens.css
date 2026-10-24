@@ -1,7 +1,9 @@
 /*
  * StudyVault design tokens. Every colour, size and timing in the app comes
  * from here. Text colours meet WCAG AA (4.5:1) on --color-surface and
- * --color-bg; --color-border-input meets 3:1 for form controls.
+ * --color-bg; --color-border-input meets 3:1 for form controls. The dark
+ * theme at the end of the file overrides only the colours and shadows, and
+ * keeps the same contrast promises.
  */
 :root {
   color-scheme: light;
@@ -13,6 +15,9 @@
   --color-surface-sunken: #f1f0f7;
   --color-skeleton-highlight: #f8f7fc;
   --color-overlay: rgb(37 35 58 / 0.32);
+  --color-topbar-bg: rgb(255 255 255 / 0.9);
+  --color-tooltip-bg: #25233a;
+  --color-tooltip-text: #ffffff;
 
   /* Borders */
   --color-border: #e7e5ef;
@@ -48,9 +53,18 @@
   --color-warm-border: #efd3a6;
   --color-danger: #d04a5c;
   --color-danger-text: #b42f44;
+  --color-danger-fill: #b42f44;
   --color-danger-hover: #9e2639;
   --color-danger-tint: #fcedef;
   --color-danger-border: #f2c9cf;
+  --color-danger-ring: rgb(180 47 68 / 0.2);
+
+  /* Illustration lines (brand/SignatureAnimation.jsx) */
+  --art-line: #ebe9f3;
+  --art-fold: #f1f0f7;
+  --art-line-accent: #d9d3fa;
+  --art-link: #c9c1f7;
+  --art-shadow: rgb(37 35 58 / 0.08);
 
   /* Gradients: used sparingly (brand mark, signature animation, hero) */
   --gradient-primary: linear-gradient(135deg, #8576f2 0%, #6d5ce8 50%, #5b49d6 100%);
@@ -135,4 +149,71 @@
   --z-drawer: 40;
   --z-dialog: 50;
   --z-toast: 60;
+}
+
+/* Dark theme: html[data-theme='dark'], set by theme/themePreference.js and
+   by the inline script in index.html */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --color-bg: #13121c;
+  --color-surface: #1b1a27;
+  --color-surface-2: #211f2e;
+  --color-surface-sunken: #100f18;
+  --color-skeleton-highlight: #2a2839;
+  --color-overlay: rgb(5 4 12 / 0.6);
+  --color-topbar-bg: rgb(27 26 39 / 0.9);
+  --color-tooltip-bg: #ecebf5;
+  --color-tooltip-text: #13121c;
+
+  /* Borders */
+  --color-border: #2c2a3d;
+  --color-border-strong: #3a3850;
+  --color-border-input: #6f6a8a;
+  --color-border-hover: #4a4763;
+  --color-border-input-hover: #8a85a6;
+
+  /* Text. --color-text-inverse stays white: it's text on purple and red fills. */
+  --color-text: #ecebf5;
+  --color-text-2: #b4b1c8;
+  --color-text-3: #8f8ca6;
+
+  /* Primary. The fills keep their light-theme values so white text still
+     passes; text and tints change. */
+  --color-primary-text: #a99ff7;
+  --color-primary-tint: #252140;
+  --color-primary-tint-2: #2f2952;
+  --color-primary-ring: rgb(140 125 245 / 0.5);
+  --color-primary-wash: rgb(140 125 245 / 0.12);
+
+  /* Status */
+  --color-success: #4fb393;
+  --color-success-text: #6fcfae;
+  --color-success-tint: #142a24;
+  --color-success-border: #24584a;
+  --color-warm-text: #f0c27f;
+  --color-warm-tint: #2c2213;
+  --color-warm-border: #5c4520;
+  --color-danger: #e0687a;
+  --color-danger-text: #f08a99;
+  --color-danger-fill: #c2384d;
+  --color-danger-hover: #a82d40;
+  --color-danger-tint: #331820;
+  --color-danger-border: #66303a;
+  --color-danger-ring: rgb(240 138 153 / 0.3);
+
+  --gradient-soft: linear-gradient(160deg, #1f1b38 0%, #1b1a27 55%, #251f19 100%);
+
+  --art-line: #2f2d42;
+  --art-fold: #34324a;
+  --art-line-accent: #3f3770;
+  --art-link: #4f4590;
+  --art-shadow: rgb(0 0 0 / 0.35);
+
+  /* Elevation: shadows need more weight to read on dark surfaces */
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.28), 0 2px 6px -1px rgb(0 0 0 / 0.32);
+  --shadow-md: 0 2px 4px rgb(0 0 0 / 0.28), 0 12px 28px -10px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 4px 10px rgb(0 0 0 / 0.3), 0 28px 56px -16px rgb(0 0 0 / 0.6);
 }

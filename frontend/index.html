@@ -7,6 +7,24 @@
     <meta name="description" content="StudyVault turns your notes, slides and readings into answers, flashcards and fill-in-the-blank practice." />
     <meta name="theme-color" content="#f7f7fb" />
     <title>StudyVault</title>
+    <style>
+      html { background: #f7f7fb; }
+      html[data-theme='dark'] { background: #13121c; color-scheme: dark; }
+    </style>
+    <script>
+      // Set the theme before anything paints (src/theme/themePreference.js does the same once the app loads)
+      (function () {
+        var preference = 'system';
+        try {
+          preference = localStorage.getItem('studyvault:theme') || 'system';
+        } catch (e) {}
+        var dark =
+          preference === 'dark' ||
+          (preference !== 'light' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        if (dark) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#13121c');
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,8 +1,9 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, Menu } from 'lucide-react';
+import { LogOut, Menu, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { cx } from '../../lib/cx';
+import { useThemePreference } from '../../theme/themePreference';
 import Logo, { LogoMark } from '../brand/Logo';
 import Dialog from '../ui/Dialog';
 import IconButton from '../ui/IconButton';
@@ -35,6 +36,20 @@ function NavList({ onNavigate }) {
   );
 }
 
+// Flips to the other theme, overriding "Match device" (Settings can set it back)
+function ThemeToggle() {
+  const { theme, setPreference } = useThemePreference();
+  const next = theme === 'dark' ? 'light' : 'dark';
+  return (
+    <IconButton
+      icon={theme === 'dark' ? Sun : Moon}
+      label={`Switch to ${next} theme`}
+      size="sm"
+      onClick={() => setPreference(next)}
+    />
+  );
+}
+
 function AccountBlock({ email, onSignOut }) {
   return (
     <div className={styles.account}>
@@ -47,6 +62,7 @@ function AccountBlock({ email, onSignOut }) {
           {email}
         </span>
       </div>
+      <ThemeToggle />
       <IconButton icon={LogOut} label="Sign out" size="sm" onClick={onSignOut} />
     </div>
   );

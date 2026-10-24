@@ -5,7 +5,8 @@ import styles from './SignatureAnimation.module.css';
 // StudyVault's signature motif: study documents flow into a glowing core and
 // come out as a flashcard, an AI answer and a fill-in-the-blank exercise.
 // Pure SVG + CSS keyframes; it plays once (~2.3s) and then stays still. With
-// reduced motion it renders the final composition directly.
+// reduced motion it renders the final composition directly. Colours that
+// change with the theme are set in the CSS module from the design tokens.
 
 const DOCUMENTS = [
   { x: 34, y: 54, rotate: -6, delay: 0 },
@@ -25,13 +26,13 @@ const CORE = { x: 210, y: 150 };
 function DocumentShape() {
   return (
     <>
-      <rect width="58" height="74" rx="8" fill="#fff" stroke="#e7e5ef" />
-      <path d="M44 0h6a8 8 0 0 1 8 8v6h-8a6 6 0 0 1-6-6z" fill="#f1f0f7" />
-      <rect x="10" y="14" width="26" height="4" rx="2" fill="#d9d3fa" />
-      <rect x="10" y="27" width="38" height="3.5" rx="1.75" fill="#ebe9f3" />
-      <rect x="10" y="37" width="34" height="3.5" rx="1.75" fill="#ebe9f3" />
-      <rect x="10" y="47" width="38" height="3.5" rx="1.75" fill="#ebe9f3" />
-      <rect x="10" y="57" width="22" height="3.5" rx="1.75" fill="#ebe9f3" />
+      <rect width="58" height="74" rx="8" className={styles.paper} />
+      <path d="M44 0h6a8 8 0 0 1 8 8v6h-8a6 6 0 0 1-6-6z" className={styles.fold} />
+      <rect x="10" y="14" width="26" height="4" rx="2" className={styles.lineAccent} />
+      <rect x="10" y="27" width="38" height="3.5" rx="1.75" className={styles.line} />
+      <rect x="10" y="37" width="34" height="3.5" rx="1.75" className={styles.line} />
+      <rect x="10" y="47" width="38" height="3.5" rx="1.75" className={styles.line} />
+      <rect x="10" y="57" width="22" height="3.5" rx="1.75" className={styles.line} />
     </>
   );
 }
@@ -64,19 +65,19 @@ function SignatureAnimation({ className, label }) {
           <stop offset="1" stopColor="#6d5ce8" stopOpacity="0" />
         </radialGradient>
         <filter id={ids.shadow} x="-20%" y="-20%" width="140%" height="150%">
-          <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#25233a" floodOpacity="0.08" />
+          <feDropShadow dx="0" dy="3" stdDeviation="4" className={styles.shadow} />
         </filter>
       </defs>
 
       {/* Connections from the documents into the core */}
-      <g className={styles.linesIn} fill="none" stroke="#d6d3e3" strokeWidth="1.5" strokeDasharray="2 6" strokeLinecap="round">
+      <g className={styles.linesIn} fill="none" strokeWidth="1.5" strokeDasharray="2 6" strokeLinecap="round">
         <path d="M96 92 Q150 112 182 140" />
         <path d="M82 160 Q138 158 178 152" />
         <path d="M104 230 Q152 204 184 164" />
       </g>
 
       {/* Connections from the core to the outputs */}
-      <g className={styles.linesOut} fill="none" stroke="#c9c1f7" strokeWidth="1.5" strokeLinecap="round">
+      <g className={styles.linesOut} fill="none" strokeWidth="1.5" strokeLinecap="round">
         <path d="M240 136 Q262 102 282 84" />
         <path d="M244 151 L274 151" />
         <path d="M240 166 Q262 200 282 222" />
@@ -108,7 +109,7 @@ function SignatureAnimation({ className, label }) {
 
       {/* The core */}
       <circle className={styles.glow} cx={CORE.x} cy={CORE.y} r="78" fill={`url(#${ids.glow})`} />
-      <circle className={styles.orbit} cx={CORE.x} cy={CORE.y} r="44" fill="none" stroke="#e4e0fb" strokeWidth="1.5" />
+      <circle className={styles.orbit} cx={CORE.x} cy={CORE.y} r="44" fill="none" strokeWidth="1.5" />
       <g className={styles.core}>
         <circle cx={CORE.x} cy={CORE.y} r="30" fill={`url(#${ids.core})`} />
         <path
@@ -120,35 +121,35 @@ function SignatureAnimation({ className, label }) {
       {/* Output: flashcard */}
       <g transform="translate(286 42) rotate(4)">
         <g className={styles.output} style={{ '--from-x': '-72px', '--from-y': '96px', animationDelay: '1.45s' }} filter={`url(#${ids.shadow})`}>
-          <rect width="112" height="70" rx="10" fill="#fff" stroke="#e7e5ef" />
-          <rect x="12" y="12" width="24" height="16" rx="8" fill="#f0eefd" />
-          <text x="24" y="23.5" textAnchor="middle" fontSize="9.5" fontWeight="700" fill="#5b49d6">
+          <rect width="112" height="70" rx="10" className={styles.paper} />
+          <rect x="12" y="12" width="24" height="16" rx="8" className={styles.badge} />
+          <text x="24" y="23.5" textAnchor="middle" fontSize="9.5" fontWeight="700" className={styles.badgeText}>
             Q
           </text>
-          <rect x="12" y="38" width="80" height="5" rx="2.5" fill="#ebe9f3" />
-          <rect x="12" y="50" width="56" height="5" rx="2.5" fill="#ebe9f3" />
+          <rect x="12" y="38" width="80" height="5" rx="2.5" className={styles.line} />
+          <rect x="12" y="50" width="56" height="5" rx="2.5" className={styles.line} />
         </g>
       </g>
 
       {/* Output: AI answer */}
       <g transform="translate(278 120)">
         <g className={styles.output} style={{ '--from-x': '-64px', '--from-y': '0px', animationDelay: '1.58s' }} filter={`url(#${ids.shadow})`}>
-          <rect width="128" height="62" rx="12" fill="#fff" stroke="#e7e5ef" />
+          <rect width="128" height="62" rx="12" className={styles.paper} />
           <circle cx="18" cy="18" r="7" fill={`url(#${ids.core})`} />
-          <rect x="32" y="15.5" width="78" height="5" rx="2.5" fill="#d9d3fa" />
-          <rect x="12" y="33" width="104" height="5" rx="2.5" fill="#ebe9f3" />
-          <rect x="12" y="45" width="70" height="5" rx="2.5" fill="#ebe9f3" />
+          <rect x="32" y="15.5" width="78" height="5" rx="2.5" className={styles.lineAccent} />
+          <rect x="12" y="33" width="104" height="5" rx="2.5" className={styles.line} />
+          <rect x="12" y="45" width="70" height="5" rx="2.5" className={styles.line} />
         </g>
       </g>
 
       {/* Output: fill in the blank */}
       <g transform="translate(286 204) rotate(-3)">
         <g className={styles.output} style={{ '--from-x': '-74px', '--from-y': '-58px', animationDelay: '1.71s' }} filter={`url(#${ids.shadow})`}>
-          <rect width="116" height="44" rx="10" fill="#fff" stroke="#e7e5ef" />
-          <rect x="12" y="19" width="24" height="5" rx="2.5" fill="#ebe9f3" />
-          <rect x="42" y="25" width="32" height="2.5" rx="1.25" fill="#e4a54a" />
+          <rect width="116" height="44" rx="10" className={styles.paper} />
+          <rect x="12" y="19" width="24" height="5" rx="2.5" className={styles.line} />
+          <rect x="42" y="25" width="32" height="2.5" rx="1.25" className={styles.blank} />
           <rect className={styles.caret} x="58" y="12" width="1.6" height="15" rx="0.8" fill="#6d5ce8" />
-          <rect x="80" y="19" width="24" height="5" rx="2.5" fill="#ebe9f3" />
+          <rect x="80" y="19" width="24" height="5" rx="2.5" className={styles.line} />
         </g>
       </g>
     </svg>

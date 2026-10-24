@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import MotionProvider from './motion/MotionProvider';
+import ThemeProvider from './theme/ThemeProvider';
 import ToastProvider from './components/ui/toast/ToastProvider';
 import ConfirmProvider from './components/ui/confirm/ConfirmProvider';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -27,41 +28,43 @@ const Settings = lazy(() => import('./pages/Settings'));
 
 function App() {
   return (
-    <MotionProvider>
-      <ToastProvider>
-        <ConfirmProvider>
-          <AuthProvider>
-            <Router>
-              <Suspense fallback={<SplashScreen />}>
-                <Routes>
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
+    <ThemeProvider>
+      <MotionProvider>
+        <ToastProvider>
+          <ConfirmProvider>
+            <AuthProvider>
+              <Router>
+                <Suspense fallback={<SplashScreen />}>
+                  <Routes>
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
 
-                  <Route element={<ProtectedRoute />}>
-                    <Route element={<AppShell />}>
-                      <Route path="/" element={<Dashboard />} />
-                      <Route path="/library" element={<Library />} />
-                      <Route path="/chat" element={<Chat />} />
-                      <Route path="/chat/:conversationId" element={<Chat />} />
-                      <Route path="/flashcards" element={<FlashcardDecks />} />
-                      <Route path="/flashcards/:setId/success" element={<FlashcardSuccess />} />
-                      <Route path="/flashcards/:setId" element={<FlashcardStudy />} />
-                      <Route path="/fill-blanks" element={<FillBlankSets />} />
-                      <Route path="/fill-blanks/attempts/:attemptId" element={<FillBlankAttempt />} />
-                      <Route path="/fill-blanks/:setId" element={<FillBlankExercise />} />
-                      <Route path="/progress" element={<Progress />} />
-                      <Route path="/settings" element={<Settings />} />
-                      <Route path="*" element={<NotFound />} />
+                    <Route element={<ProtectedRoute />}>
+                      <Route element={<AppShell />}>
+                        <Route path="/" element={<Dashboard />} />
+                        <Route path="/library" element={<Library />} />
+                        <Route path="/chat" element={<Chat />} />
+                        <Route path="/chat/:conversationId" element={<Chat />} />
+                        <Route path="/flashcards" element={<FlashcardDecks />} />
+                        <Route path="/flashcards/:setId/success" element={<FlashcardSuccess />} />
+                        <Route path="/flashcards/:setId" element={<FlashcardStudy />} />
+                        <Route path="/fill-blanks" element={<FillBlankSets />} />
+                        <Route path="/fill-blanks/attempts/:attemptId" element={<FillBlankAttempt />} />
+                        <Route path="/fill-blanks/:setId" element={<FillBlankExercise />} />
+                        <Route path="/progress" element={<Progress />} />
+                        <Route path="/settings" element={<Settings />} />
+                        <Route path="*" element={<NotFound />} />
+                      </Route>
                     </Route>
-                  </Route>
-                </Routes>
-              </Suspense>
-            </Router>
-          </AuthProvider>
-        </ConfirmProvider>
-      </ToastProvider>
-      <ServerWakeNotice />
-    </MotionProvider>
+                  </Routes>
+                </Suspense>
+              </Router>
+            </AuthProvider>
+          </ConfirmProvider>
+        </ToastProvider>
+        <ServerWakeNotice />
+      </MotionProvider>
+    </ThemeProvider>
   );
 }
 

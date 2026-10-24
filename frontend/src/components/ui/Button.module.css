@@ -124,7 +124,7 @@
 }
 
 .danger {
-  background: var(--color-danger-text);
+  background: var(--color-danger-fill);
   color: var(--color-text-inverse);
 }
 

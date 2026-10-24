@@ -7,6 +7,52 @@
   overflow: visible;
 }
 
+/* Theme colours */
+.paper {
+  fill: var(--color-surface);
+  stroke: var(--color-border);
+}
+
+.fold {
+  fill: var(--art-fold);
+}
+
+.line {
+  fill: var(--art-line);
+}
+
+.lineAccent {
+  fill: var(--art-line-accent);
+}
+
+.badge {
+  fill: var(--color-primary-tint);
+}
+
+.badgeText {
+  fill: var(--color-primary-text);
+}
+
+.blank {
+  fill: var(--color-warm);
+}
+
+.shadow {
+  flood-color: var(--art-shadow);
+}
+
+.linesIn {
+  stroke: var(--color-border-strong);
+}
+
+.linesOut {
+  stroke: var(--art-link);
+}
+
+.orbit {
+  stroke: var(--color-primary-tint-2);
+}
+
 .document,
 .output,
 .core {
